@@ -59,16 +59,12 @@ canvas.addEventListener("mousemove", (e) => {
             }
         }
         else {
-            let a = dy / dx;
-            let b = point.y - a * point.x;
+            let step = (Math.abs(dx) > Math.abs(dy) ? Math.abs(dx) : Math.abs(dy));
+            let sx = dx / step;
+            let sy = dy / step;
             while (point.x !== cursor.x && point.y !== cursor.y) {
-                if (Math.abs(dx) > Math.abs(dy)) {
-                    point.x += (dx > 0) ? 1 : -1;
-                    point.y = a * point.x + b;
-                } else {
-                    point.y += (dy > 0) ? 1 : -1;
-                    point.x = (point.y - b) / a;
-                }
+                point.x += sx;
+                point.y += sy;
                 currentPath.push({
                     x: Math.round(point.x),
                     y: Math.round(point.y)
