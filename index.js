@@ -29,7 +29,7 @@ let temporaryPath = [];
 let mainPath = [];
 let isDrawing = false;
 
-function drawStroke (start, end) {
+function createStroke (start, end) {
     let dx = end.x - start.x;
     let dy = end.y - start.y;
     let additionalPoints = [];
@@ -116,7 +116,13 @@ function chaikin (path, level) {
             x: Math.round(0.25 * p1.x + 0.75 * p2.x),
             y: Math.round(0.25 * p1.y + 0.75 * p2.y)
         };
-        newPath.push(q1, q2);
+        let lastPoint = newPath[newPath.length - 1];
+        if (lastPoint.x !== q1.x || lastPoint.y !== q1.y) {
+            newPath.push(q1);
+        }
+        if (q1.x !== q2.x || q1.y !== q2.y) {
+            newPath.push(q2);
+        }
     }
     newPath.push(path[path.length - 1]);
     return chaikin(newPath, level - 1);
@@ -132,7 +138,7 @@ canvas.addEventListener("mousedown", (e) => {
 canvas.addEventListener("mousemove", (e) => {
     if (isDrawing && temporaryPath.length > 0) {
         let point = temporaryPath.at(-1);
-        temporaryPath.push(...drawStroke(point, cursor));
+        temporaryPath.push(...createStroke(point, cursor));
         mainPath.push({ x: cursor.x, y: cursor.y });
     }
 });
@@ -144,9 +150,9 @@ canvas.addEventListener("mouseup", (e) => {
     const smoothedPath = chaikin(simplifiedPath, 2);
     console.log("after smoothing: ", smoothedPath);
 
-    const finalPath = [];
+    const finalPath = [smoothedPath[0]];
     for (let i = 1; i < smoothedPath.length; i++) {
-        finalPath.push(...drawStroke(smoothedPath[i - 1], smoothedPath[i]));
+        finalPath.push(...createStroke(smoothedPath[i - 1], smoothedPath[i]));
     }
 
     paths[paths.length - 1] = finalPath;
