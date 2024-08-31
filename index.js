@@ -6,10 +6,10 @@ const cursor = {
     y: 0
 };
 
-const ball = {
+const brush = {
     x: 0,
     y: 0,
-    radius: 5,
+    radius: 2,
     color: "black",
     draw() {
         ctx.beginPath();
@@ -29,7 +29,7 @@ let temporaryPath = [];
 let mainPath = [];
 let isDrawing = false;
 
-function fillPointsBetweenTwoPoints (start, end) {
+function drawStroke (start, end) {
     let dx = end.x - start.x;
     let dy = end.y - start.y;
     let additionalPoints = [];
@@ -69,7 +69,6 @@ function fillPointsBetweenTwoPoints (start, end) {
     return additionalPoints;
 }
 
-
 function perpendicularDistance (point, line) {
     let x0 = point.x;
     let y0 = point.y;
@@ -105,7 +104,7 @@ function chaikin (path, level) {
     if (!level)
         return path;
 
-    let newPath = [];
+    let newPath = [path[0]];
     for (let i = 1; i < path.length; i++) {
         let p1 = path[i - 1];
         let p2 = path[i];
@@ -119,6 +118,7 @@ function chaikin (path, level) {
         };
         newPath.push(q1, q2);
     }
+    newPath.push(path[path.length - 1]);
     return chaikin(newPath, level - 1);
 }
 
@@ -132,11 +132,8 @@ canvas.addEventListener("mousedown", (e) => {
 canvas.addEventListener("mousemove", (e) => {
     if (isDrawing && temporaryPath.length > 0) {
         let point = temporaryPath.at(-1);
-        temporaryPath.push(...fillPointsBetweenTwoPoints(point, cursor));
-        mainPath.push({
-            x: Math.floor(cursor.x),
-            y: Math.floor(cursor.y)
-        });
+        temporaryPath.push(...drawStroke(point, cursor));
+        mainPath.push({ x: cursor.x, y: cursor.y });
     }
 });
 
@@ -144,19 +141,15 @@ canvas.addEventListener("mouseup", (e) => {
     console.log("before simplify: ", mainPath);
     const simplifiedPath = lineSimplify(mainPath, 3);
     console.log("after simplify: ", simplifiedPath);
-    const smoothedPath = chaikin(simplifiedPath, 1);
+    const smoothedPath = chaikin(simplifiedPath, 2);
     console.log("after smoothing: ", smoothedPath);
 
     const finalPath = [];
-    // for (let i = 1; i < simplifiedPath.length; i++) {
-    //     finalPath.push(...fillPointsBetweenTwoPoints(simplifiedPath[i - 1], simplifiedPath[i]));
-    // }
     for (let i = 1; i < smoothedPath.length; i++) {
-        finalPath.push(...fillPointsBetweenTwoPoints(smoothedPath[i - 1], smoothedPath[i]));
+        finalPath.push(...drawStroke(smoothedPath[i - 1], smoothedPath[i]));
     }
 
     paths[paths.length - 1] = finalPath;
-    // paths[paths.length - 1] = simplifiedPath;
 
     mainPath = [];
     temporaryPath = [];
@@ -165,8 +158,8 @@ canvas.addEventListener("mouseup", (e) => {
 
 function drawBrushPoint (x, y) {
     ctx.beginPath();
-    ctx.arc(x, y, ball.radius, 0, Math.PI * 2);
-    ctx.fillStyle = ball.color;
+    ctx.arc(x, y, brush.radius, 0, Math.PI * 2);
+    ctx.fillStyle = brush.color;
     ctx.fill();
 }
 
@@ -185,9 +178,9 @@ function clear() {
 function draw() {
     clear();
 
-    ball.x = cursor.x;
-    ball.y = cursor.y;
-    ball.draw();
+    brush.x = cursor.x;
+    brush.y = cursor.y;
+    brush.draw();
     drawPaths(paths);
 
     requestAnimationFrame(draw);
