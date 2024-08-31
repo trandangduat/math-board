@@ -101,6 +101,27 @@ function lineSimplify (path, epsilon) {
     return resultPath;
 }
 
+function chaikin (path, level) {
+    if (!level)
+        return path;
+
+    let newPath = [];
+    for (let i = 1; i < path.length; i++) {
+        let p1 = path[i - 1];
+        let p2 = path[i];
+        let q1 = {
+            x: Math.round(0.75 * p1.x + 0.25 * p2.x),
+            y: Math.round(0.75 * p1.y + 0.25 * p2.y)
+        };
+        let q2 = {
+            x: Math.round(0.25 * p1.x + 0.75 * p2.x),
+            y: Math.round(0.25 * p1.y + 0.75 * p2.y)
+        };
+        newPath.push(q1, q2);
+    }
+    return chaikin(newPath, level - 1);
+}
+
 canvas.addEventListener("mousedown", (e) => {
     paths.push(temporaryPath);
     temporaryPath.push({ x: cursor.x, y: cursor.y });
@@ -123,13 +144,19 @@ canvas.addEventListener("mouseup", (e) => {
     console.log("before simplify: ", mainPath);
     const simplifiedPath = lineSimplify(mainPath, 3);
     console.log("after simplify: ", simplifiedPath);
+    const smoothedPath = chaikin(simplifiedPath, 1);
+    console.log("after smoothing: ", smoothedPath);
 
     const finalPath = [];
-    for (let i = 1; i < simplifiedPath.length; i++) {
-        finalPath.push(...fillPointsBetweenTwoPoints(simplifiedPath[i - 1], simplifiedPath[i]));
+    // for (let i = 1; i < simplifiedPath.length; i++) {
+    //     finalPath.push(...fillPointsBetweenTwoPoints(simplifiedPath[i - 1], simplifiedPath[i]));
+    // }
+    for (let i = 1; i < smoothedPath.length; i++) {
+        finalPath.push(...fillPointsBetweenTwoPoints(smoothedPath[i - 1], smoothedPath[i]));
     }
 
     paths[paths.length - 1] = finalPath;
+    // paths[paths.length - 1] = simplifiedPath;
 
     mainPath = [];
     temporaryPath = [];
