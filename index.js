@@ -10,7 +10,7 @@ const cursor = {
 const brush = {
     x: 0,
     y: 0,
-    radius: 2,
+    radius: 4,
     color: "black",
     draw() {
         ctx.beginPath();
@@ -134,7 +134,7 @@ function chaikin (path, level) {
             let v10 = { x: p0.x - p1.x, y: p0.y - p1.y };
             let v12 = { x: p2.x - p1.x, y: p2.y - p1.y };
             let angle = radianToDegree(getAngleBetweenVectors(v10, v12));
-            if (angle <= 50) {
+            if (angle <= 90) {
                 newPath.pop();
                 newPath.push(p1);
             }
@@ -168,11 +168,8 @@ canvas.addEventListener("mousemove", (e) => {
 });
 
 canvas.addEventListener("mouseup", (e) => {
-    console.log("before simplify: ", mainPath);
     const simplifiedPath = lineSimplify(mainPath, 3);
-    console.log("after simplify: ", simplifiedPath);
     const smoothedPath = chaikin(simplifiedPath, 1);
-    console.log("after smoothing: ", smoothedPath);
 
     const finalPath = [smoothedPath[0]];
     for (let i = 1; i < smoothedPath.length; i++) {
