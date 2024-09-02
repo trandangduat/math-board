@@ -16,14 +16,9 @@ const brush = {
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
-        ctx.fill();
+        ctx.stroke();
     }
 }
-
-addEventListener("mousemove", (e) => {
-    cursor.x = e.clientX - canvas.getBoundingClientRect().left;
-    cursor.y = e.clientY - canvas.getBoundingClientRect().top;
-});
 
 const paths = [];
 let temporaryPath = [];
@@ -80,7 +75,7 @@ function perpendicularDistance (point, line) {
     return Math.abs((y2 - y1) * x0 - (x2 - x1) * y0 + x2 * y1 - y2 * x1) / Math.sqrt(Math.pow(y2 - y1, 2) + Math.pow(x2 - x1, 2));
 }
 
-function lineSimplify (path, epsilon) {
+function DouglasPeucker (path, epsilon) {
     let maxDistance = 0;
     let index = 0;
     for (let i = 1; i < path.length - 1; i++) {
@@ -94,7 +89,7 @@ function lineSimplify (path, epsilon) {
     if (maxDistance > epsilon) {
         let path1 = path.slice(0, index + 1);
         let path2 = path.slice(index);
-        resultPath = [...lineSimplify(path1, epsilon).slice(0, -1), ...lineSimplify(path2, epsilon)];
+        resultPath = [...DouglasPeucker(path1, epsilon).slice(0, -1), ...DouglasPeucker(path2, epsilon)];
     } else {
         resultPath = [path[0], path[path.length - 1]];
     }
@@ -105,6 +100,10 @@ function getAngleBetweenVectors (v1, v2) {
     let dot = v1.x * v2.x + v1.y * v2.y;
     let d1 = Math.sqrt(v1.x ** 2 + v1.y ** 2);
     let d2 = Math.sqrt(v2.x ** 2 + v2.y ** 2);
+    if (!d1 || !d2) {
+        console.log("Division by zero");
+        return 0;
+    }
     return Math.acos(dot / (d1 * d2));
 }
 
@@ -112,7 +111,7 @@ function radianToDegree (radian) {
     return radian * 180 / Math.PI;
 }
 
-function chaikin (path, level) {
+function Chaikin (path, level) {
     if (!level)
         return path;
 
@@ -149,39 +148,8 @@ function chaikin (path, level) {
         }
     }
     newPath.push(path[path.length - 1]);
-    return chaikin(newPath, level - 1);
+    return Chaikin(newPath, level - 1);
 }
-
-canvas.addEventListener("mousedown", (e) => {
-    paths.push(temporaryPath);
-    temporaryPath.push({ x: cursor.x, y: cursor.y });
-    mainPath.push({ x: cursor.x, y: cursor.y });
-    isDrawing = true;
-});
-
-canvas.addEventListener("mousemove", (e) => {
-    if (isDrawing && temporaryPath.length > 0) {
-        let point = temporaryPath.at(-1);
-        temporaryPath.push(...createStroke(point, cursor));
-        mainPath.push({ x: cursor.x, y: cursor.y });
-    }
-});
-
-canvas.addEventListener("mouseup", (e) => {
-    const simplifiedPath = lineSimplify(mainPath, 3);
-    const smoothedPath = chaikin(simplifiedPath, 1);
-
-    const finalPath = [smoothedPath[0]];
-    for (let i = 1; i < smoothedPath.length; i++) {
-        finalPath.push(...createStroke(smoothedPath[i - 1], smoothedPath[i]));
-    }
-
-    paths[paths.length - 1] = finalPath;
-
-    mainPath = [];
-    temporaryPath = [];
-    isDrawing = false;
-});
 
 function drawBrushPoint (x, y) {
     ctx.beginPath();
@@ -190,7 +158,7 @@ function drawBrushPoint (x, y) {
     ctx.fill();
 }
 
-function drawPaths (paths) {
+function drawStrokes (paths) {
     paths.forEach(path => {
         path.forEach(point => {
             drawBrushPoint(point.x, point.y);
@@ -208,7 +176,7 @@ function draw() {
     brush.x = cursor.x;
     brush.y = cursor.y;
     brush.draw();
-    drawPaths(paths);
+    drawStrokes(paths);
     mousePosTracker.innerHTML = `(x: ${cursor.x}, y: ${cursor.y})`;
 
     requestAnimationFrame(draw);
@@ -217,5 +185,42 @@ function draw() {
 (function main() {
     canvas.width = innerWidth;
     canvas.height = innerHeight;
+
+    addEventListener("mousemove", (e) => {
+        cursor.x = e.clientX - canvas.getBoundingClientRect().left;
+        cursor.y = e.clientY - canvas.getBoundingClientRect().top;
+    });
+
+    canvas.addEventListener("mousedown", (e) => {
+        paths.push(temporaryPath);
+        temporaryPath.push({ x: cursor.x, y: cursor.y });
+        mainPath.push({ x: cursor.x, y: cursor.y });
+        isDrawing = true;
+    });
+
+    canvas.addEventListener("mousemove", (e) => {
+        if (isDrawing && temporaryPath.length > 0) {
+            let point = temporaryPath.at(-1);
+            temporaryPath.push(...createStroke(point, cursor));
+            mainPath.push({ x: cursor.x, y: cursor.y });
+        }
+    });
+
+    canvas.addEventListener("mouseup", (e) => {
+        const simplifiedPath = DouglasPeucker(mainPath, 3);
+        const smoothedPath = Chaikin(simplifiedPath, 1);
+
+        const finalPath = [smoothedPath[0]];
+        for (let i = 1; i < smoothedPath.length; i++) {
+            finalPath.push(...createStroke(smoothedPath[i - 1], smoothedPath[i]));
+        }
+
+        paths[paths.length - 1] = finalPath;
+
+        mainPath = [];
+        temporaryPath = [];
+        isDrawing = false;
+    });
+
     draw();
 })();
