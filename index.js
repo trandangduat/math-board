@@ -1,5 +1,6 @@
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
+const mousePosTracker = document.getElementById("mouse-pos");
 
 const cursor = {
     x: 0,
@@ -100,12 +101,25 @@ function lineSimplify (path, epsilon) {
     return resultPath;
 }
 
+function getAngleBetweenVectors (v1, v2) {
+    let dot = v1.x * v2.x + v1.y * v2.y;
+    let d1 = Math.sqrt(v1.x ** 2 + v1.y ** 2);
+    let d2 = Math.sqrt(v2.x ** 2 + v2.y ** 2);
+    return Math.acos(dot / (d1 * d2));
+}
+
+function radianToDegree (radian) {
+    return radian * 180 / Math.PI;
+}
+
 function chaikin (path, level) {
     if (!level)
         return path;
 
     let newPath = [path[0]];
-    for (let i = 1; i < path.length; i++) {
+    let len = path.length;
+    for (let i = 1; i < len; i++) {
+        let p0 = (i > 1 ? path[i - 2] : null);
         let p1 = path[i - 1];
         let p2 = path[i];
         let q1 = {
@@ -116,6 +130,16 @@ function chaikin (path, level) {
             x: Math.round(0.25 * p1.x + 0.75 * p2.x),
             y: Math.round(0.25 * p1.y + 0.75 * p2.y)
         };
+        if (p0) {
+            let v10 = { x: p0.x - p1.x, y: p0.y - p1.y };
+            let v12 = { x: p2.x - p1.x, y: p2.y - p1.y };
+            let angle = radianToDegree(getAngleBetweenVectors(v10, v12));
+            if (angle <= 50) {
+                newPath.pop();
+                newPath.push(p1);
+            }
+        }
+
         let lastPoint = newPath[newPath.length - 1];
         if (lastPoint.x !== q1.x || lastPoint.y !== q1.y) {
             newPath.push(q1);
@@ -147,7 +171,7 @@ canvas.addEventListener("mouseup", (e) => {
     console.log("before simplify: ", mainPath);
     const simplifiedPath = lineSimplify(mainPath, 3);
     console.log("after simplify: ", simplifiedPath);
-    const smoothedPath = chaikin(simplifiedPath, 2);
+    const smoothedPath = chaikin(simplifiedPath, 1);
     console.log("after smoothing: ", smoothedPath);
 
     const finalPath = [smoothedPath[0]];
@@ -188,6 +212,7 @@ function draw() {
     brush.y = cursor.y;
     brush.draw();
     drawPaths(paths);
+    mousePosTracker.innerHTML = `(x: ${cursor.x}, y: ${cursor.y})`;
 
     requestAnimationFrame(draw);
 }
