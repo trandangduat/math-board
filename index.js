@@ -1,3 +1,4 @@
+import { Layer } from "./Layer.js";
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 const mousePosTracker = document.getElementById("mouse-pos");
@@ -222,5 +223,10 @@ function draw() {
         isDrawing = false;
     });
 
+    const test = new Layer(1);
+    test.draw(100,100,'red');
+    const test2 = new Layer(2);
+    test2.draw(100,150,'blue');
+
     draw();
-})();
+})()
