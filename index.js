@@ -1,5 +1,7 @@
 import { Layer } from "./Layer.js";
+const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
+const offscreenLayer = new Layer("offscreen");
 const mousePosTracker = document.getElementById("mouse-pos");
 
 const cursor = {
@@ -13,10 +15,10 @@ const brush = {
     radius: 4,
     color: "black",
     draw() {
-        mainLayer.ctx.beginPath();
-        mainLayer.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        mainLayer.ctx.fillStyle = this.color;
-        mainLayer.ctx.stroke();
+        uiLayer.ctx.beginPath();
+        uiLayer.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        uiLayer.ctx.strokeStyle = this.color;
+        uiLayer.ctx.stroke();
     }
 }
 
@@ -167,6 +169,7 @@ function drawStrokes (paths) {
 }
 
 function clear() {
+    uiLayer.clear();
     mainLayer.clear();
 }
 
@@ -176,6 +179,7 @@ function draw() {
     brush.x = cursor.x;
     brush.y = cursor.y;
     brush.draw();
+
     drawStrokes(paths);
     mousePosTracker.innerHTML = `(x: ${cursor.x}, y: ${cursor.y})`;
 
@@ -184,20 +188,21 @@ function draw() {
 
 (function main() {
     document.body.appendChild(mainLayer.canvas);
+    document.body.appendChild(uiLayer.canvas);
 
     addEventListener("mousemove", (e) => {
         cursor.x = e.clientX - mainLayer.getBoudingBox().left;
         cursor.y = e.clientY - mainLayer.getBoudingBox().top;
     });
 
-    mainLayer.canvas.addEventListener("mousedown", (e) => {
+    uiLayer.canvas.addEventListener("mousedown", (e) => {
         paths.push(temporaryPath);
         temporaryPath.push({ x: cursor.x, y: cursor.y });
         mainPath.push({ x: cursor.x, y: cursor.y });
         isDrawing = true;
     });
 
-    mainLayer.canvas.addEventListener("mousemove", (e) => {
+    uiLayer.canvas.addEventListener("mousemove", (e) => {
         if (isDrawing && temporaryPath.length > 0) {
             let point = temporaryPath.at(-1);
             temporaryPath.push(...createStroke(point, cursor));
@@ -205,11 +210,11 @@ function draw() {
         }
     });
 
-    mainLayer.canvas.addEventListener("mouseup", (e) => {
+    uiLayer.canvas.addEventListener("mouseup", (e) => {
         const simplifiedPath = DouglasPeucker(mainPath, 3);
         const smoothedPath = Chaikin(simplifiedPath, 1);
-
         const finalPath = [smoothedPath[0]];
+
         for (let i = 1; i < smoothedPath.length; i++) {
             finalPath.push(...createStroke(smoothedPath[i - 1], smoothedPath[i]));
         }

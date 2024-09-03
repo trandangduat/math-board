@@ -13,8 +13,8 @@ export class Layer {
     clear () {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
-    clone (canvas) {
-        this.ctx.drawImage(canvas, 0, 0);
+    clone (otherLayer) {
+        this.ctx.drawImage(otherLayer.canvas, 0, 0);
     }
 
     draw(x,y, color) {
