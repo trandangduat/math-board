@@ -16,4 +16,11 @@ export class Layer {
         this.clear();
         this.ctx.drawImage(otherLayer.canvas, 0, 0);
     }
+    getImageData () {
+        return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
+    }
+    putImageData (imageData) {
+        this.clear();
+        this.ctx.putImageData(imageData, 0, 0);
+    }
 }

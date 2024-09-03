@@ -1,8 +1,13 @@
 import { Layer } from "./Layer.js";
+import { Stack } from "./Stack.js";
+
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
 const offscreenLayer = new Layer("offscreen");
+const History = new Stack();
 const mousePosTracker = document.getElementById("mouse-pos");
+const undoButton = document.getElementById("undo");
+const redoButton = document.getElementById("redo");
 
 const cursor = {
     x: 0,
