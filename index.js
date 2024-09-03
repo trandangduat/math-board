@@ -25,7 +25,7 @@ const brush = {
 const paths = [];
 let temporaryPath = [];
 let mainPath = [];
-let isDrawing = false;
+let userInteracting = false;
 
 function createStroke (start, end) {
     let dx = end.x - start.x;
@@ -160,28 +160,34 @@ function drawBrushPoint (x, y) {
     mainLayer.ctx.fill();
 }
 
-function drawStrokes (paths) {
-    paths.forEach(path => {
-        path.forEach(point => {
-            drawBrushPoint(point.x, point.y);
-        })
-    });
+function drawStroke (path) {
+    path.forEach(point => {
+        drawBrushPoint(point.x, point.y);
+    })
 }
 
 function clear() {
     uiLayer.clear();
-    mainLayer.clear();
+    mainLayer.clone(offscreenLayer);
+}
+
+function update() {
+    mousePosTracker.innerHTML = `(x: ${cursor.x}, y: ${cursor.y})`;
+    brush.x = cursor.x;
+    brush.y = cursor.y;
 }
 
 function draw() {
     clear();
+    update();
 
-    brush.x = cursor.x;
-    brush.y = cursor.y;
     brush.draw();
-
-    drawStrokes(paths);
-    mousePosTracker.innerHTML = `(x: ${cursor.x}, y: ${cursor.y})`;
+    if (paths.length > 0) {
+        drawStroke(paths[paths.length - 1]);
+    }
+    if (!userInteracting) {
+        offscreenLayer.clone(mainLayer);
+    }
 
     requestAnimationFrame(draw);
 }
@@ -199,11 +205,11 @@ function draw() {
         paths.push(temporaryPath);
         temporaryPath.push({ x: cursor.x, y: cursor.y });
         mainPath.push({ x: cursor.x, y: cursor.y });
-        isDrawing = true;
+        userInteracting = true;
     });
 
     uiLayer.canvas.addEventListener("mousemove", (e) => {
-        if (isDrawing && temporaryPath.length > 0) {
+        if (userInteracting && temporaryPath.length > 0) {
             let point = temporaryPath.at(-1);
             temporaryPath.push(...createStroke(point, cursor));
             mainPath.push({ x: cursor.x, y: cursor.y });
@@ -214,16 +220,13 @@ function draw() {
         const simplifiedPath = DouglasPeucker(mainPath, 3);
         const smoothedPath = Chaikin(simplifiedPath, 1);
         const finalPath = [smoothedPath[0]];
-
         for (let i = 1; i < smoothedPath.length; i++) {
             finalPath.push(...createStroke(smoothedPath[i - 1], smoothedPath[i]));
         }
-
         paths[paths.length - 1] = finalPath;
-
         mainPath = [];
         temporaryPath = [];
-        isDrawing = false;
+        userInteracting = false;
     });
 
     draw();

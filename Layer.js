@@ -14,6 +14,7 @@ export class Layer {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
     clone (otherLayer) {
+        this.clear();
         this.ctx.drawImage(otherLayer.canvas, 0, 0);
     }
 
