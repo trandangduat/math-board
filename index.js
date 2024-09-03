@@ -1,6 +1,5 @@
 import { Layer } from "./Layer.js";
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const mainLayer = new Layer("main");
 const mousePosTracker = document.getElementById("mouse-pos");
 
 const cursor = {
@@ -14,10 +13,10 @@ const brush = {
     radius: 4,
     color: "black",
     draw() {
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.stroke();
+        mainLayer.ctx.beginPath();
+        mainLayer.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        mainLayer.ctx.fillStyle = this.color;
+        mainLayer.ctx.stroke();
     }
 }
 
@@ -153,10 +152,10 @@ function Chaikin (path, level) {
 }
 
 function drawBrushPoint (x, y) {
-    ctx.beginPath();
-    ctx.arc(x, y, brush.radius, 0, Math.PI * 2);
-    ctx.fillStyle = brush.color;
-    ctx.fill();
+    mainLayer.ctx.beginPath();
+    mainLayer.ctx.arc(x, y, brush.radius, 0, Math.PI * 2);
+    mainLayer.ctx.fillStyle = brush.color;
+    mainLayer.ctx.fill();
 }
 
 function drawStrokes (paths) {
@@ -168,7 +167,7 @@ function drawStrokes (paths) {
 }
 
 function clear() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    mainLayer.clear();
 }
 
 function draw() {
@@ -184,22 +183,21 @@ function draw() {
 }
 
 (function main() {
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
+    document.body.appendChild(mainLayer.canvas);
 
     addEventListener("mousemove", (e) => {
-        cursor.x = e.clientX - canvas.getBoundingClientRect().left;
-        cursor.y = e.clientY - canvas.getBoundingClientRect().top;
+        cursor.x = e.clientX - mainLayer.getBoudingBox().left;
+        cursor.y = e.clientY - mainLayer.getBoudingBox().top;
     });
 
-    canvas.addEventListener("mousedown", (e) => {
+    mainLayer.canvas.addEventListener("mousedown", (e) => {
         paths.push(temporaryPath);
         temporaryPath.push({ x: cursor.x, y: cursor.y });
         mainPath.push({ x: cursor.x, y: cursor.y });
         isDrawing = true;
     });
 
-    canvas.addEventListener("mousemove", (e) => {
+    mainLayer.canvas.addEventListener("mousemove", (e) => {
         if (isDrawing && temporaryPath.length > 0) {
             let point = temporaryPath.at(-1);
             temporaryPath.push(...createStroke(point, cursor));
@@ -207,7 +205,7 @@ function draw() {
         }
     });
 
-    canvas.addEventListener("mouseup", (e) => {
+    mainLayer.canvas.addEventListener("mouseup", (e) => {
         const simplifiedPath = DouglasPeucker(mainPath, 3);
         const smoothedPath = Chaikin(simplifiedPath, 1);
 
@@ -222,11 +220,6 @@ function draw() {
         temporaryPath = [];
         isDrawing = false;
     });
-
-    const test = new Layer(1);
-    test.draw(100,100,'red');
-    const test2 = new Layer(2);
-    test2.draw(100,150,'blue');
 
     draw();
 })()
