@@ -199,12 +199,8 @@ function draw() {
         offscreenLayer.clone(mainLayer);
         History.push(mainLayer.getImageData());
         DeletedHistory.clear();
-
         redoButton.disabled = true;
         undoButton.disabled = false;
-
-        console.log("Done painting");
-        console.log("History size: ", History.size);
     }
 
     requestAnimationFrame(draw);
@@ -224,7 +220,6 @@ function undo(event) {
     if (DeletedHistory.size > 0) {
         redoButton.disabled = false;
     }
-    console.log("Undo: ", History.top(), drawingState);
 }
 
 function redo(event) {
@@ -241,7 +236,6 @@ function redo(event) {
     if (History.size > 1) {
         undoButton.disabled = false;
     }
-    console.log("Redo: ", History.top(), drawingState);
 }
 
 (function main() {
@@ -284,7 +278,6 @@ function redo(event) {
     });
 
     History.push(offscreenLayer.getImageData());
-    console.log("History size: ", History.size);
 
     undoButton.addEventListener("click", undo);
     redoButton.addEventListener("click", redo);
