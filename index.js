@@ -193,10 +193,13 @@ function draw() {
         drawStroke(paths[paths.length - 1]);
     }
     if (drawingState == DONE_PAINTING) {
-        console.log("Done painting");
         drawingState = BEFORE_PAINTING;
         offscreenLayer.clone(mainLayer);
         History.push(mainLayer.getImageData());
+
+        undoButton.disabled = false;
+
+        console.log("Done painting");
         console.log("History size: ", History.size);
     }
 
@@ -207,11 +210,13 @@ function undo(event) {
     event.preventDefault();
 
     if (History.size <= 1) {
-        console.log("Nothing to undo");
         return;
     }
     History.pop();
     offscreenLayer.putImageData(History.top());
+    if (History.size <= 1) {
+        undoButton.disabled = true;
+    }
     console.log("Undo: ", History.top(), drawingState);
 }
 
