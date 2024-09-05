@@ -9,6 +9,8 @@ const mousePosTracker = document.getElementById("mouse-pos");
 const undoButton = document.getElementById("undo");
 const redoButton = document.getElementById("redo");
 
+const [BEFORE_PAINTING, DURING_PAINTING, DONE_PAINTING] = [0, 1, 2];
+
 const cursor = {
     x: 0,
     y: 0
@@ -30,7 +32,7 @@ const brush = {
 const paths = [];
 let temporaryPath = [];
 let mainPath = [];
-let userInteracting = false;
+let drawingState = false;
 
 function createStroke (start, end) {
     let dx = end.x - start.x;
@@ -187,14 +189,30 @@ function draw() {
     update();
 
     brush.draw();
-    if (paths.length > 0) {
+    if (paths.length > 0 && drawingState !== BEFORE_PAINTING) {
         drawStroke(paths[paths.length - 1]);
     }
-    if (!userInteracting) {
+    if (drawingState == DONE_PAINTING) {
+        console.log("Done painting");
+        drawingState = BEFORE_PAINTING;
         offscreenLayer.clone(mainLayer);
+        History.push(mainLayer.getImageData());
+        console.log("History size: ", History.size);
     }
 
     requestAnimationFrame(draw);
+}
+
+function undo(event) {
+    event.preventDefault();
+
+    if (History.size <= 1) {
+        console.log("Nothing to undo");
+        return;
+    }
+    History.pop();
+    offscreenLayer.putImageData(History.top());
+    console.log("Undo: ", History.top(), drawingState);
 }
 
 (function main() {
@@ -207,14 +225,15 @@ function draw() {
     });
 
     uiLayer.canvas.addEventListener("mousedown", (e) => {
+        drawingState = DURING_PAINTING;
+
         paths.push(temporaryPath);
         temporaryPath.push({ x: cursor.x, y: cursor.y });
         mainPath.push({ x: cursor.x, y: cursor.y });
-        userInteracting = true;
     });
 
     uiLayer.canvas.addEventListener("mousemove", (e) => {
-        if (userInteracting && temporaryPath.length > 0) {
+        if (drawingState == DURING_PAINTING && temporaryPath.length > 0) {
             let point = temporaryPath.at(-1);
             temporaryPath.push(...createStroke(point, cursor));
             mainPath.push({ x: cursor.x, y: cursor.y });
@@ -222,6 +241,8 @@ function draw() {
     });
 
     uiLayer.canvas.addEventListener("mouseup", (e) => {
+        drawingState = DONE_PAINTING;
+
         const simplifiedPath = DouglasPeucker(mainPath, 3);
         const smoothedPath = Chaikin(simplifiedPath, 1);
         const finalPath = [smoothedPath[0]];
@@ -231,8 +252,12 @@ function draw() {
         paths[paths.length - 1] = finalPath;
         mainPath = [];
         temporaryPath = [];
-        userInteracting = false;
     });
+
+    History.push(offscreenLayer.getImageData());
+    console.log("History size: ", History.size);
+
+    undoButton.addEventListener("click", undo);
 
     draw();
 })()

@@ -4,7 +4,7 @@ export class Layer {
         this.canvas = document.createElement("canvas");
         this.canvas.width = innerWidth;
         this.canvas.height = innerHeight;
-        this.ctx = this.canvas.getContext("2d");
+        this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
     }
     getBoudingBox () {
         return this.canvas.getBoundingClientRect();
