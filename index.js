@@ -26,7 +26,7 @@ const cursor = {
 const brush = {
     x: 0,
     y: 0,
-    radius: 3,
+    radius: 2,
     color: "black",
     draw() {
         uiLayer.ctx.beginPath();
@@ -117,6 +117,41 @@ function redo(event) {
     }
 }
 
+function startDrawing (e) {
+    e.preventDefault();
+    drawingState = DURING_PAINTING;
+
+    paths.push(temporaryPath);
+    temporaryPath.push({ x: cursor.x, y: cursor.y });
+    mainPath.push({ x: cursor.x, y: cursor.y });
+}
+
+function whileDrawing (e) {
+    e.preventDefault();
+
+    if (drawingState == DURING_PAINTING && temporaryPath.length > 0) {
+        let point = temporaryPath.at(-1);
+        temporaryPath.push(...createStroke(point, cursor));
+        mainPath.push({ x: cursor.x, y: cursor.y });
+    }
+}
+
+function finishDrawing (e) {
+    e.preventDefault();
+    drawingState = DONE_PAINTING;
+
+    const simplifiedPath = DouglasPeucker(mainPath, 3);
+    const smoothedPath = Chaikin(simplifiedPath, 1);
+    const finalPath = [smoothedPath[0]];
+    for (let i = 1; i < smoothedPath.length; i++) {
+        finalPath.push(...createStroke(smoothedPath[i - 1], smoothedPath[i]));
+    }
+    paths[paths.length - 1] = finalPath;
+    mainPath = [];
+    temporaryPath = [];
+}
+
+
 (function main() {
     document.body.appendChild(mainLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
@@ -126,35 +161,9 @@ function redo(event) {
         cursor.y = e.clientY - mainLayer.getBoudingBox().top;
     });
 
-    uiLayer.canvas.addEventListener("mousedown", (e) => {
-        drawingState = DURING_PAINTING;
-
-        paths.push(temporaryPath);
-        temporaryPath.push({ x: cursor.x, y: cursor.y });
-        mainPath.push({ x: cursor.x, y: cursor.y });
-    });
-
-    uiLayer.canvas.addEventListener("mousemove", (e) => {
-        if (drawingState == DURING_PAINTING && temporaryPath.length > 0) {
-            let point = temporaryPath.at(-1);
-            temporaryPath.push(...createStroke(point, cursor));
-            mainPath.push({ x: cursor.x, y: cursor.y });
-        }
-    });
-
-    uiLayer.canvas.addEventListener("mouseup", (e) => {
-        drawingState = DONE_PAINTING;
-
-        const simplifiedPath = DouglasPeucker(mainPath, 3);
-        const smoothedPath = Chaikin(simplifiedPath, 1);
-        const finalPath = [smoothedPath[0]];
-        for (let i = 1; i < smoothedPath.length; i++) {
-            finalPath.push(...createStroke(smoothedPath[i - 1], smoothedPath[i]));
-        }
-        paths[paths.length - 1] = finalPath;
-        mainPath = [];
-        temporaryPath = [];
-    });
+    uiLayer.canvas.addEventListener("mousedown", startDrawing);
+    uiLayer.canvas.addEventListener("mousemove", whileDrawing);
+    uiLayer.canvas.addEventListener("mouseup", finishDrawing);
 
     History.push(offscreenLayer.getImageData());
 
