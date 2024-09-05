@@ -9,6 +9,7 @@ html, body{
 }
 
 canvas {
+    cursor: crosshair;
     display: block;
     position: absolute;
     top: 0;
