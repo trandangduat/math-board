@@ -17,4 +17,7 @@ export class Stack {
     empty() {
         return this.size === 0;
     }
+    clear() {
+        this.stack = [];
+    }
 }
