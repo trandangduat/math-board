@@ -1,10 +1,6 @@
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
-import {
-    createStroke,
-    DouglasPeucker,
-    Chaikin
-} from "./LineAlgorithms.js";
+import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -36,9 +32,8 @@ const brush = {
     }
 }
 
-const paths = [];
-let temporaryPath = [];
 let mainPath = [];
+let tempPath = [];
 let drawingState = false;
 
 function drawBrushPoint (x, y) {
@@ -70,8 +65,8 @@ function draw() {
     update();
 
     brush.draw();
-    if (paths.length > 0 && drawingState !== BEFORE_PAINTING) {
-        drawStroke(paths[paths.length - 1]);
+    if (drawingState !== BEFORE_PAINTING && mainPath.length > 0) {
+        drawStroke([...mainPath, ...tempPath]);
     }
     if (drawingState == DONE_PAINTING) {
         drawingState = BEFORE_PAINTING;
@@ -117,38 +112,47 @@ function redo(event) {
     }
 }
 
+function getMousePos (e) {
+    return {
+        x: e.clientX - mainLayer.rect().left,
+        y: e.clientY - mainLayer.rect().top
+    };
+}
+
 function startDrawing (e) {
     e.preventDefault();
     drawingState = DURING_PAINTING;
 
-    paths.push(temporaryPath);
-    temporaryPath.push({ x: cursor.x, y: cursor.y });
-    mainPath.push({ x: cursor.x, y: cursor.y });
+    const cursor = getMousePos(e);
+    mainPath = [];
+    clearBuffer();
+
+    mainPath.push(cursor);
+    addToBuffer(cursor);
 }
 
 function whileDrawing (e) {
     e.preventDefault();
 
-    if (drawingState == DURING_PAINTING && temporaryPath.length > 0) {
-        let point = temporaryPath.at(-1);
-        temporaryPath.push(...createStroke(point, cursor));
-        mainPath.push({ x: cursor.x, y: cursor.y });
+    if (drawingState == DURING_PAINTING) {
+        const cursor = getMousePos(e);
+        addToBuffer(cursor);
+        const nextPoints = getNextPoints();
+        if (nextPoints.length > 0) {
+            // save one stable smoothed point
+            mainPath.push(...createStroke(mainPath[mainPath.length - 1], nextPoints[0]));
+            // save the rest of average points between the stable point to the cursor
+            tempPath = [];
+            for (let i = 1; i < nextPoints.length; i++) {
+                tempPath.push(...createStroke(nextPoints[i - 1], nextPoints[i]));
+            }
+        }
     }
 }
 
 function finishDrawing (e) {
     e.preventDefault();
     drawingState = DONE_PAINTING;
-
-    const simplifiedPath = DouglasPeucker(mainPath, 3);
-    const smoothedPath = Chaikin(simplifiedPath, 1);
-    const finalPath = [smoothedPath[0]];
-    for (let i = 1; i < smoothedPath.length; i++) {
-        finalPath.push(...createStroke(smoothedPath[i - 1], smoothedPath[i]));
-    }
-    paths[paths.length - 1] = finalPath;
-    mainPath = [];
-    temporaryPath = [];
 }
 
 
@@ -157,8 +161,8 @@ function finishDrawing (e) {
     document.body.appendChild(uiLayer.canvas);
 
     addEventListener("mousemove", (e) => {
-        cursor.x = e.clientX - mainLayer.getBoudingBox().left;
-        cursor.y = e.clientY - mainLayer.getBoudingBox().top;
+        cursor.x = e.clientX - mainLayer.rect().left;
+        cursor.y = e.clientY - mainLayer.rect().top;
     });
 
     uiLayer.canvas.addEventListener("mousedown", startDrawing);

@@ -6,7 +6,7 @@ export class Layer {
         this.canvas.height = innerHeight;
         this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
     }
-    getBoudingBox () {
+    rect () {
         return this.canvas.getBoundingClientRect();
     }
     clear () {

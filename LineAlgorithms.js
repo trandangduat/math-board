@@ -104,3 +104,52 @@ export function Chaikin (path, level) {
     newPath.push(path[path.length - 1]);
     return Chaikin(newPath, level - 1);
 }
+
+/* source https://stackoverflow.com/questions/40324313/svg-smooth-freehand-drawing/ */
+
+const BUFFER_SIZE = 4;
+let buffer = [];
+
+export function addToBuffer (point) {
+    buffer.push(point);
+    while (buffer.length > BUFFER_SIZE) {
+        buffer.shift();
+    }
+}
+
+export function clearBuffer() {
+    buffer = [];
+}
+
+function getAveragePoint (offset) {
+    const len = buffer.length;
+    if (len % 2 === 1 || len == BUFFER_SIZE) {
+        let sum = { x: 0, y: 0 };
+        let count = 0;
+        for (let i = offset; i < len; i++) {
+            sum.x += buffer[i].x;
+            sum.y += buffer[i].y;
+            count++;
+        }
+        return {
+            x: Math.round(sum.x / count),
+            y: Math.round(sum.y / count)
+        };
+    }
+    return null;
+}
+
+export function getNextPoints() {
+    let returnPoints = [];
+    let point = getAveragePoint(0);
+    if (point) {
+        returnPoints.push(point);
+        for (let offset = 2; offset < buffer.length; offset += 2) {
+            point = getAveragePoint(offset);
+            if (point) {
+                returnPoints.push(point);
+            }
+        }
+    }
+    return returnPoints;
+}
