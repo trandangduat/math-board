@@ -125,6 +125,7 @@ function startDrawing (e) {
 
     const cursor = getMousePos(e);
     mainPath = [];
+    tempPath = [];
     clearBuffer();
 
     mainPath.push(cursor);
