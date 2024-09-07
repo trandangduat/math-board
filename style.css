@@ -8,6 +8,12 @@ html, body{
     height: 100%;
 }
 
+body {
+    background-image: url('public/SVG/graph-paper.svg');
+    background-color: #fff7ed;
+    overflow: hidden;
+}
+
 canvas {
     cursor: crosshair;
     display: block;
