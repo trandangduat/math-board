@@ -169,6 +169,7 @@ function finishDrawing (e) {
     uiLayer.canvas.addEventListener("mousedown", startDrawing);
     uiLayer.canvas.addEventListener("mousemove", whileDrawing);
     uiLayer.canvas.addEventListener("mouseup", finishDrawing);
+    uiLayer.canvas.addEventListener("mouseout", finishDrawing);
 
     History.push(offscreenLayer.getImageData());
 
