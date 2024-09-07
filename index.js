@@ -153,7 +153,10 @@ function whileDrawing (e) {
 
 function finishDrawing (e) {
     e.preventDefault();
-    drawingState = DONE_PAINTING;
+
+    if (drawingState === DURING_PAINTING) {
+        drawingState = DONE_PAINTING;
+    }
 }
 
 
