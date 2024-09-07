@@ -4,13 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="style.css">
-    <title>Document</title>
+    <title>Math Board</title>
 </head>
 <body>
-    <div id="mouse-pos" style="z-index: 99;position: absolute; top: 0; right: 0; width: auto;"></div>
-    <div style="position: absolute; z-index: 99; top: 0; left: 0; display: flex; flex-direction: row;">
-        <button id="undo" style="font-size: 2rem; padding: 0.5rem 1rem;" disabled>Undo</button>
-        <button id="redo" style="font-size: 2rem; padding: 0.5rem 1rem;" disabled>Redo</button>
+    <div id="mouse-pos" style="position: absolute; top: 0; right: 0; width: auto;"></div>
+    <div id="control-panel">
+        <button id="undo" class="btn" disabled>Undo</button>
+        <button id="redo" class="btn" disabled>Redo</button>
+        <input type="range" id="brush-size" min="2" max="20" value="2" step="2">
+        <input type="color" id="brush-color" value="#000000">
     </div>
 
 

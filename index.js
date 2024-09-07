@@ -11,6 +11,8 @@ const DeletedHistory = new Stack();
 const mousePosTracker = document.getElementById("mouse-pos");
 const undoButton = document.getElementById("undo");
 const redoButton = document.getElementById("redo");
+const brushSizeSlider = document.getElementById("brush-size");
+const brushColorPicker = document.getElementById("brush-color");
 
 const [BEFORE_PAINTING, DURING_PAINTING, DONE_PAINTING] = [0, 1, 2];
 
@@ -178,6 +180,12 @@ function finishDrawing (e) {
 
     undoButton.addEventListener("click", undo);
     redoButton.addEventListener("click", redo);
+    brushSizeSlider.addEventListener("input", (e) => {
+        brush.radius = e.target.value;
+    });
+    brushColorPicker.addEventListener("input", (e) => {
+        brush.color = e.target.value;
+    });
 
     draw();
 })()
