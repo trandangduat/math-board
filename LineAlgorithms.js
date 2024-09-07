@@ -105,7 +105,11 @@ export function Chaikin (path, level) {
     return Chaikin(newPath, level - 1);
 }
 
-/* source https://stackoverflow.com/questions/40324313/svg-smooth-freehand-drawing/ */
+// source https://stackoverflow.com/questions/40324313/svg-smooth-freehand-drawing/
+
+// Below smoothing method is called 'Moving Average':
+// it calculates the average of the last mouse positions kept in a buffer,
+// the buffer is updated real-time with the current mouse position.
 
 const BUFFER_SIZE = 4;
 let buffer = [];
@@ -123,6 +127,7 @@ export function clearBuffer() {
 
 function getAveragePoint (offset) {
     const len = buffer.length;
+    // Ensures the buffer has an odd number of points, which is beneficial for symmetric averaging, leading to smoother curves.
     if (len % 2 === 1 || len == BUFFER_SIZE) {
         let sum = { x: 0, y: 0 };
         let count = 0;
@@ -144,6 +149,7 @@ export function getNextPoints() {
     let point = getAveragePoint(0);
     if (point) {
         returnPoints.push(point);
+        // Skips every other point to improve smoothing and reduce jitter from rapid mouse movements.
         for (let offset = 2; offset < buffer.length; offset += 2) {
             point = getAveragePoint(offset);
             if (point) {
