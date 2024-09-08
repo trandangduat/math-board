@@ -195,6 +195,7 @@ function finishDrawing (e) {
         brush.mode = (brush.mode === MODE_DRAW ? MODE_ERASER : MODE_DRAW);
         brushModeToggle.innerHTML = (brush.mode === MODE_DRAW ? "Draw" : "Erase");
         mainLayer.setCompositeOperation(brush.mode === MODE_ERASER ? "destination-out" : "source-over");
+        brushColorPicker.disabled = (brush.mode === MODE_ERASER);
     });
 
     draw();
