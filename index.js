@@ -13,8 +13,10 @@ const undoButton = document.getElementById("undo");
 const redoButton = document.getElementById("redo");
 const brushSizeSlider = document.getElementById("brush-size");
 const brushColorPicker = document.getElementById("brush-color");
+const brushModeToggle = document.getElementById("toggle-brush-mode");
 
 const [BEFORE_PAINTING, DURING_PAINTING, DONE_PAINTING] = [0, 1, 2];
+const [MODE_DRAW, MODE_ERASER] = [0, 1];
 
 const cursor = {
     x: 0,
@@ -24,6 +26,7 @@ const cursor = {
 const brush = {
     x: 0,
     y: 0,
+    mode: MODE_DRAW,
     radius: 2,
     color: "black",
     draw() {
@@ -53,7 +56,9 @@ function drawStroke (path) {
 
 function clear() {
     uiLayer.clear();
-    mainLayer.clone(offscreenLayer);
+    if (brush.mode == MODE_DRAW) {
+        mainLayer.clone(offscreenLayer);
+    }
 }
 
 function update() {
@@ -67,7 +72,7 @@ function draw() {
     update();
 
     brush.draw();
-    if (drawingState !== BEFORE_PAINTING && mainPath.length > 0) {
+    if (drawingState !== BEFORE_PAINTING) {
         drawStroke([...mainPath, ...tempPath]);
     }
     if (drawingState == DONE_PAINTING) {
@@ -83,30 +88,30 @@ function draw() {
 }
 
 function undo(event) {
-    event.preventDefault();
-
+    event.preventDefault()
     if (History.size <= 1) {
         return;
     }
     DeletedHistory.push(History.pop());
     offscreenLayer.putImageData(History.top());
+    mainLayer.clone(offscreenLayer);
     if (History.size <= 1) {
         undoButton.disabled = true;
     }
-    if (DeletedHistory.size > 0) {
+    if (!DeletedHistory.empty()) {
         redoButton.disabled = false;
     }
 }
 
 function redo(event) {
-    event.preventDefault();
-
-    if (DeletedHistory.size === 0) {
+    event.preventDefault()
+    if (DeletedHistory.empty()) {
         return;
     }
     History.push(DeletedHistory.pop());
     offscreenLayer.putImageData(History.top());
-    if (DeletedHistory.size === 0) {
+    mainLayer.clone(offscreenLayer);
+    if (DeletedHistory.empty()) {
         redoButton.disabled = true;
     }
     if (History.size > 1) {
@@ -185,6 +190,11 @@ function finishDrawing (e) {
     });
     brushColorPicker.addEventListener("input", (e) => {
         brush.color = e.target.value;
+    });
+    brushModeToggle.addEventListener("click", (e) => {
+        brush.mode = (brush.mode === MODE_DRAW ? MODE_ERASER : MODE_DRAW);
+        brushModeToggle.innerHTML = (brush.mode === MODE_DRAW ? "Draw" : "Erase");
+        mainLayer.setCompositeOperation(brush.mode === MODE_ERASER ? "destination-out" : "source-over");
     });
 
     draw();

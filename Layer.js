@@ -23,4 +23,7 @@ export class Layer {
         this.clear();
         this.ctx.putImageData(imageData, 0, 0);
     }
+    setCompositeOperation (operation) {
+        this.ctx.globalCompositeOperation = operation;
+    }
 }
