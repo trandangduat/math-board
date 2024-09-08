@@ -119,6 +119,11 @@ function redo(event) {
     }
 }
 
+async function capture() {
+    const result = await mainLayer.getSnapshot(400, 100, 100, 100);
+    console.log(result);
+}
+
 function getMousePos (e) {
     return {
         x: e.clientX - mainLayer.rect().left,
@@ -197,6 +202,7 @@ function finishDrawing (e) {
         mainLayer.setCompositeOperation(brush.mode === MODE_ERASER ? "destination-out" : "source-over");
         brushColorPicker.disabled = (brush.mode === MODE_ERASER);
     });
+    document.getElementById("capture").addEventListener("click", capture);
 
     draw();
 })()

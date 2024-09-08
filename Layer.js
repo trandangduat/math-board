@@ -33,4 +33,15 @@ export class Layer {
     setCompositeOperation (operation) {
         this.ctx.globalCompositeOperation = operation;
     }
+    async getSnapshot (x, y, width, height) {
+        const offscreenCanvas = new OffscreenCanvas(width, height);
+        const offscreenCtx = offscreenCanvas.getContext("2d");
+        offscreenCtx.clearRect(0, 0, width, height);
+        offscreenCtx.drawImage(this.canvas, x, y, width, height, 0, 0, width, height);
+        const result = await offscreenCanvas.convertToBlob().then(blob => {
+            const url = URL.createObjectURL(blob);
+            return url;
+        });
+        return result;
+    }
 }
