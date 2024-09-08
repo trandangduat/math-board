@@ -13,8 +13,15 @@ export class Layer {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
     clone (otherLayer) {
+        const compositeOperation = this.ctx.globalCompositeOperation;
+        if (this.ctx.globalCompositeOperation !== "source-over") {
+            this.ctx.globalCompositeOperation = "source-over";
+        }
         this.clear();
         this.ctx.drawImage(otherLayer.canvas, 0, 0);
+        if (compositeOperation !== "source-over") {
+            this.ctx.globalCompositeOperation = compositeOperation;
+        }
     }
     getImageData () {
         return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
