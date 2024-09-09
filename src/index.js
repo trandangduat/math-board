@@ -1,6 +1,9 @@
+import './style.css';
+
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
+import { createWorker } from 'tesseract.js';
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -120,8 +123,12 @@ function redo(event) {
 }
 
 async function capture() {
-    const result = await mainLayer.getSnapshot(400, 100, 100, 100);
-    console.log(result);
+    const result = await mainLayer.getSnapshot(400, 100, 500, 500);
+    console.log("Image URL: ", result);
+    const worker = await createWorker('eng');
+    const ret = await worker.recognize(result);
+    console.log("OCR result: ", ret.data.text);
+    await worker.terminate();
 }
 
 function getMousePos (e) {

@@ -10,7 +10,7 @@ html, body{
 }
 
 body {
-    background-image: url('public/SVG/graph-paper.svg');
+    background-image: url('../public/SVG/graph-paper.svg');
     background-color: #fff7ed;
     overflow: hidden;
 }
