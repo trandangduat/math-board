@@ -40,6 +40,31 @@ const brush = {
     }
 }
 
+const drawingRect = {
+    min_x: 99999,
+    min_y: 99999,
+    max_x: 0,
+    max_y: 0,
+    reset() {
+        this.min_x = this.min_y = 99999;
+        this.max_x = this.max_y = 0;
+    },
+    update(x, y) {
+        this.max_x = Math.max(this.max_x, x);
+        this.max_y = Math.max(this.max_y, y);
+        this.min_x = Math.min(this.min_x, x);
+        this.min_y = Math.min(this.min_y, y);
+    },
+    getRect() {
+        return {
+            x: this.min_x,
+            y: this.min_y,
+            w: this.max_x - this.min_x,
+            h: this.max_y - this.min_y
+        }
+    }
+}
+
 let mainPath = [];
 let tempPath = [];
 let drawingState = false;
@@ -123,7 +148,7 @@ function redo(event) {
 }
 
 async function capture() {
-    const result = await mainLayer.getSnapshot(400, 100, 500, 500);
+    const result = await mainLayer.getSnapshot(drawingRect.getRect());
     console.log("Image URL: ", result);
     const worker = await createWorker('eng');
     const ret = await worker.recognize(result);
@@ -143,6 +168,7 @@ function startDrawing (e) {
     drawingState = DURING_PAINTING;
 
     const cursor = getMousePos(e);
+    drawingRect.reset();
     mainPath = [];
     tempPath = [];
     clearBuffer();
@@ -166,6 +192,10 @@ function whileDrawing (e) {
             for (let i = 1; i < nextPoints.length; i++) {
                 tempPath.push(...createStroke(nextPoints[i - 1], nextPoints[i]));
             }
+        }
+        if (mainPath.length > 0) {
+            const lastPoint = mainPath[mainPath.length - 1];
+            drawingRect.update(lastPoint.x, lastPoint.y);
         }
     }
 }
