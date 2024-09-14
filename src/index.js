@@ -1,9 +1,6 @@
-import './style.css';
-
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
-import { createWorker } from 'tesseract.js';
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -150,10 +147,6 @@ function redo(event) {
 async function capture() {
     const result = await mainLayer.getSnapshot(drawingRect.getRect());
     console.log("Image URL: ", result);
-    const worker = await createWorker('eng');
-    const ret = await worker.recognize(result);
-    console.log("OCR result: ", ret.data.text);
-    await worker.terminate();
 }
 
 function getMousePos (e) {
@@ -168,7 +161,6 @@ function startDrawing (e) {
     drawingState = DURING_PAINTING;
 
     const cursor = getMousePos(e);
-    drawingRect.reset();
     mainPath = [];
     tempPath = [];
     clearBuffer();
@@ -209,7 +201,7 @@ function finishDrawing (e) {
 }
 
 
-(function main() {
+(async function main() {
     document.body.appendChild(mainLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
 
