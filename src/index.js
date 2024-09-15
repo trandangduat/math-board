@@ -1,6 +1,7 @@
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
+import { loadModel } from "./model/model.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -234,4 +235,6 @@ function finishDrawing (e) {
     document.getElementById("capture").addEventListener("click", capture);
 
     draw();
+
+    await loadModel();
 })()
