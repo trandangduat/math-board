@@ -1,7 +1,7 @@
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
-import { loadModel } from "./model/model.js";
+import { loadModel, predict } from "./model/model.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -236,5 +236,16 @@ function finishDrawing (e) {
 
     draw();
 
-    await loadModel();
+    // Load image from local file
+    const img = new Image();
+    img.src = "../test2.jpg";
+    img.onload = async () => {
+        const canvas = document.createElement("canvas");
+        document.body.appendChild(canvas);
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0);
+        const imgData = ctx.getImageData(0, 0, img.width, img.height);
+        await predict(imgData);
+    }
+
 })()
