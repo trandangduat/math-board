@@ -64,9 +64,6 @@ function thinning (imgArray) {
     return arr.map(x => 1 - x);
 }
 
-const text_input = document.getElementById("text_input");
-const text_output = document.getElementById("text_output");
-
 export async function preprocessImage (imageData) {
     const img = await Jimp.fromBitmap(imageData);
     img.resize({ w: IMAGE_SIZE, h: IMAGE_SIZE });
@@ -76,20 +73,6 @@ export async function preprocessImage (imageData) {
         const value = (img.bitmap.data[i] * 2 >= 255) ? 1 : 0; // thresholding
         imgArray.push(value);
     }
-    for (let i = 0; i < IMAGE_SIZE; i++) {
-        let str = "";
-        for (let j = 0; j < IMAGE_SIZE; j++) {
-            str += imgArray[i * IMAGE_SIZE + j] ? "1" : "0";
-        }
-        text_input.value += str + "\n";
-    }
     const imgArrayThinned = thinning(imgArray);
-    for (let i = 0; i < IMAGE_SIZE; i++) {
-        let str = "";
-        for (let j = 0; j < IMAGE_SIZE; j++) {
-            str += imgArrayThinned[i * IMAGE_SIZE + j] ? "1" : "0";
-        }
-        text_output.value += str + "\n";
-    }
     return tf.tensor(imgArrayThinned, [1, IMAGE_SIZE, IMAGE_SIZE, 1]);
 }
