@@ -236,6 +236,8 @@ function finishDrawing (e) {
 
     draw();
 
+    await loadModel();
+
     // Load image from local file
     const img = new Image();
     img.src = "../test2.jpg";
