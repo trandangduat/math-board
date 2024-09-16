@@ -13,30 +13,8 @@ function cellId (row, col) {
     return row * IMAGE_SIZE + col;
 }
 
-function transitions (imgArray, row, col) {
-    let count = 0;
-    let prev = imgArray[cellId(row + dir[7][0], col + dir[7][1])];
-    for (let i = 0; i < dir.length; i++) {
-        let nRow = row + dir[i][0];
-        let nCol = col + dir[i][1];
-        if (imgArray[cellId(nRow, nCol)] !== prev && prev === 0) {
-            count++;
-        }
-        prev = imgArray[cellId(nRow, nCol)];
-    }
-    return count;
-}
-
-function countBlacks (imgArray, row, col) {
-    let count = 0;
-    for (let i = 0; i < dir.length; i++) {
-        let nRow = row + dir[i][0];
-        let nCol = col + dir[i][1];
-        if (imgArray[cellId(nRow, nCol)]) {
-            count++;
-        }
-    }
-    return count;
+function isInside (row, col) {
+    return 0 <= row && row < IMAGE_SIZE && 0 <= col && col < IMAGE_SIZE;
 }
 
 /**
@@ -49,16 +27,26 @@ function thinning (imgArray) {
     while (true) {
         let changed = false;
         let toWhite = [];
-        for (let i = 1; i < IMAGE_SIZE - 1; i++) {
-            for (let j = 1; j < IMAGE_SIZE - 1; j++) {
+        for (let i = 0; i < IMAGE_SIZE; i++) {
+            for (let j = 0; j < IMAGE_SIZE; j++) {
                 if (arr[cellId(i, j)] === 0) continue;
-                let t = transitions(arr, i, j);
-                let c = countBlacks(arr, i, j);
-                const p = [];
-                for (let t = 0; t < 8; t += 2) {
-                    p[t] = arr[cellId(i + dir[t][0], j + dir[t][1])];
+                let transitions = 0;
+                let countBlacks = 0;
+                const p = new Array(8).fill(0);
+                for (let t = 0; t < 8; t++) {
+                    if (isInside(i + dir[t][0], j + dir[t][1])) {
+                        p[t] = arr[cellId(i + dir[t][0], j + dir[t][1])];
+                    }
                 }
-                if (2 <= c && c <= 6 && t === 1) {
+                for (let t = 0; t < 8; t++) {
+                    if (isInside(i + dir[t][0], j + dir[t][1])) {
+                        countBlacks += p[t];
+                        if (p[t] === 0 && p[(t + 1) % 8] === 1) {
+                            transitions++;
+                        }
+                    }
+                }
+                if (2 <= countBlacks && countBlacks <= 6 && transitions === 1) {
                     if (turn === 0 && p[0] * p[2] * p[4] === 0 && p[2] * p[4] * p[6] === 0) {
                         toWhite.push(cellId(i, j));
                     }
@@ -69,9 +57,7 @@ function thinning (imgArray) {
             }
         }
         changed |= toWhite.length > 0;
-        for (const id of toWhite) {
-            arr[id] = 0;
-        }
+        toWhite.forEach(id => arr[id] = 0);
         turn = 1 - turn;
         if (!changed) break;
     }
