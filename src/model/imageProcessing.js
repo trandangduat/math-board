@@ -63,15 +63,29 @@ export async function extractExpressions (imageData) {
         }
     }
     const expressionImagesData = [];
+    for (let comp of components) {
+        let [minX, minY] = [width, height];
+        let [maxX, maxY] = [0, 0];
+        for (let [i, j] of comp) {
+            minX = Math.min(minX, j);
+            minY = Math.min(minY, i);
+            maxX = Math.max(maxX, j);
+            maxY = Math.max(maxY, i);
+        }
+        const [w, h] = [maxX - minX + 1, maxY - minY + 1];
+        const imgData = new ImageData(
+            new Uint8ClampedArray(w * h * 4).fill(255),
+            w, h
+        );
+        for (let [i, j] of comp) {
+            const idx = ((i - minY) * w + (j - minX)) * 4;
+            imgData.data[idx] = imgData.data[idx + 1] = imgData.data[idx + 2] = 0;
+        }
+        expressionImagesData.push(imgData);
+    }
     console.log("Number of components: ", components.length);
 
     console.log("time elapsed: ", Date.now() - t, "ms");
-    // const imgData = new ImageData(
-    //     new Uint8ClampedArray(img.bitmap.data),
-    //     img.bitmap.width,
-    //     img.bitmap.height
-    // );
-    // test_ctx.putImageData(imgData, 0, 0);
     return expressionImagesData;
 }
 
@@ -86,8 +100,8 @@ export async function preprocessImage (imageData) {
     }
     const imgArrayThinned = thinning(imgArray);
     text_input.value = "";
-    for (let i = 0; i < imgArray.length; i++) {
-        text_input.value += imgArray[i] + " ";
+    for (let i = 0; i < imgArrayThinned.length; i++) {
+        text_input.value += imgArrayThinned[i] + " ";
         if ((i + 1) % IMAGE_SIZE === 0) {
             text_input.value += "\n";
         }

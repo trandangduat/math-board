@@ -31,6 +31,6 @@ export async function predict(imageData) {
 export async function predictExpressions(imageData) {
     const expressionImages = await extractExpressions(imageData);
     for (let imgData of expressionImages) {
-        predict(imgData);
+        await predict(imgData);
     }
 }
