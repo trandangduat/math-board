@@ -1,7 +1,7 @@
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
-import { loadModel, predict } from "./model/model.js";
+import { loadModel, predict, predictExpressions } from "./model/model.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -48,17 +48,17 @@ const drawingRect = {
         this.max_x = this.max_y = 0;
     },
     update(x, y) {
-        this.max_x = Math.max(this.max_x, x);
-        this.max_y = Math.max(this.max_y, y);
-        this.min_x = Math.min(this.min_x, x);
-        this.min_y = Math.min(this.min_y, y);
+        this.max_x = Math.max(this.max_x, x + brush.radius);
+        this.max_y = Math.max(this.max_y, y + brush.radius);
+        this.min_x = Math.min(this.min_x, Math.max(0, x - brush.radius));
+        this.min_y = Math.min(this.min_y, Math.max(0, y - brush.radius));
     },
     getRect() {
         return {
             x: this.min_x,
             y: this.min_y,
-            w: this.max_x - this.min_x,
-            h: this.max_y - this.min_y
+            w: this.max_x - this.min_x + 1,
+            h: this.max_y - this.min_y + 1
         }
     }
 }
@@ -146,8 +146,8 @@ function redo(event) {
 }
 
 async function capture() {
-    const result = await mainLayer.getSnapshot(drawingRect.getRect());
-    console.log("Image URL: ", result);
+    const imgData = mainLayer.getSnapshot(drawingRect.getRect());
+    await predictExpressions(imgData);
 }
 
 function getMousePos (e) {
@@ -165,6 +165,8 @@ function startDrawing (e) {
     mainPath = [];
     tempPath = [];
     clearBuffer();
+
+    // drawingRect.reset();
 
     mainPath.push(cursor);
     addToBuffer(cursor);
@@ -201,7 +203,6 @@ function finishDrawing (e) {
     }
 }
 
-
 (async function main() {
     document.body.appendChild(mainLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
@@ -221,7 +222,7 @@ function finishDrawing (e) {
     undoButton.addEventListener("click", undo);
     redoButton.addEventListener("click", redo);
     brushSizeSlider.addEventListener("input", (e) => {
-        brush.radius = e.target.value;
+        brush.radius = parseInt(e.target.value);
     });
     brushColorPicker.addEventListener("input", (e) => {
         brush.color = e.target.value;
@@ -237,17 +238,4 @@ function finishDrawing (e) {
     draw();
 
     await loadModel();
-
-    // Load image from local file
-    const img = new Image();
-    img.src = "../test2.jpg";
-    img.onload = async () => {
-        const canvas = document.createElement("canvas");
-        document.body.appendChild(canvas);
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0);
-        const imgData = ctx.getImageData(0, 0, img.width, img.height);
-        await predict(imgData);
-    }
-
 })()

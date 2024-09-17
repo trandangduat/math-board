@@ -1,5 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
-import { preprocessImage } from './imageProcessing';
+import { extractExpressions, preprocessImage } from './imageProcessing';
 
 const MODEL_PATH = '../recognizer_model/model.json';
 const MathExpr = [ '!', '(', ')', '+', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=', 'X', 'cos', 'div', 'i', 'j', 'k', 'log', 'pi', 'sin', 'sqrt', 'tan', 'times', 'u', 'v', 'y', 'z' ];
@@ -26,4 +26,11 @@ export async function predict(imageData) {
     const result = MathExpr[prediction.indexOf(Math.max(...prediction))];
     console.log("Prediction: ", result);
     console.log("Prediction time: ", Date.now() - startPredict, "ms");
+}
+
+export async function predictExpressions(imageData) {
+    const expressionImages = await extractExpressions(imageData);
+    for (let imgData of expressionImages) {
+        predict(imgData);
+    }
 }
