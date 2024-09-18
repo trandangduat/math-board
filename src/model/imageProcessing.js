@@ -62,7 +62,7 @@ export async function extractExpressions (imageData) {
             }
         }
     }
-    const expressionImagesData = [];
+    const compBoxes = [];
     for (let comp of components) {
         let [minX, minY] = [width, height];
         let [maxX, maxY] = [0, 0];
@@ -73,20 +73,42 @@ export async function extractExpressions (imageData) {
             maxY = Math.max(maxY, i);
         }
         const [w, h] = [maxX - minX + 1, maxY - minY + 1];
+        compBoxes.push([minX, minY, w, h]);
+    }
+    // Find all the cases where equal (=) splits into two minus (-) and merge them
+    for (let i = 1; i < compBoxes.length; i++) {
+        const [x1, y1, w1, h1] = compBoxes[i];
+        const [x2, y2, w2, h2] = compBoxes[i - 1];
+        if (x1 < x2 + w2 / 2) {
+            compBoxes[i - 1] = [Math.min(x1, x2),
+                                Math.min(y1, y2),
+                                Math.max(x1 + w1, x2 + w2) - Math.min(x1, x2),
+                                Math.max(y1 + h1, y2 + h2) - Math.min(y1, y2)];
+            compBoxes[i] = [0, 0, 0, 0];
+            components[i - 1] = components[i - 1].concat(components[i]);
+        }
+    }
+    let k = 0;
+    const expressionImagesData = [];
+    for (let [x, y, w, h] of compBoxes) {
+        if (w === 0 || h === 0) {
+            continue;
+        }
         const maxSize = Math.max(w, h) + 5;
-
         const imgData = new ImageData(
             new Uint8ClampedArray(4 * maxSize * maxSize).fill(255),
             maxSize
         );
-        for (let [i, j] of comp) {
-            const row = i - minY + Math.floor((maxSize - h) / 2);
-            const col = j - minX + Math.floor((maxSize - w) / 2);
+        for (let [i, j] of components[k]) {
+            const row = i - y + Math.floor((maxSize - h) / 2);
+            const col = j - x + Math.floor((maxSize - w) / 2);
             const idx = (row * maxSize + col) * 4;
             imgData.data[idx] = imgData.data[idx + 1] = imgData.data[idx + 2] = 0;
         }
         expressionImagesData.push(imgData);
+        k++;
     }
+
     console.log("Number of components: ", components.length);
 
     console.log("time elapsed: ", Date.now() - t, "ms");
