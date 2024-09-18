@@ -75,17 +75,17 @@ export async function extractExpressions (imageData) {
         const [w, h] = [maxX - minX + 1, maxY - minY + 1];
         compBoxes.push([minX, minY, w, h]);
     }
-    // Find all the cases where equal (=) splits into two minus (-) and merge them
+    // Find all the cases where expression parts are splited and merge them
     for (let i = 1; i < compBoxes.length; i++) {
         const [x1, y1, w1, h1] = compBoxes[i];
         const [x2, y2, w2, h2] = compBoxes[i - 1];
         if (x1 < x2 + w2 / 2) {
-            compBoxes[i - 1] = [Math.min(x1, x2),
+            compBoxes[i] = [Math.min(x1, x2),
                                 Math.min(y1, y2),
                                 Math.max(x1 + w1, x2 + w2) - Math.min(x1, x2),
                                 Math.max(y1 + h1, y2 + h2) - Math.min(y1, y2)];
-            compBoxes[i] = [0, 0, 0, 0];
-            components[i - 1] = components[i - 1].concat(components[i]);
+            compBoxes[i - 1] = [0, 0, 0, 0];
+            components[i] = components[i].concat(components[i - 1]);
         }
     }
     let k = 0;
