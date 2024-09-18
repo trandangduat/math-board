@@ -92,6 +92,7 @@ export async function extractExpressions (imageData) {
     const expressionImagesData = [];
     for (let [x, y, w, h] of compBoxes) {
         if (w === 0 || h === 0) {
+            k++;
             continue;
         }
         const maxSize = Math.max(w, h) + 5;
@@ -125,7 +126,7 @@ export async function preprocessImage (imageData) {
         imgArray.push(value);
     }
     const imgArrayThinned = thinning(imgArray);
-    text_input.value = "";
+    // text_input.value = "";
     for (let i = 0; i < imgArrayThinned.length; i++) {
         text_input.value += imgArrayThinned[i] + " ";
         if ((i + 1) % IMAGE_SIZE === 0) {
