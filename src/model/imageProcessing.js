@@ -73,12 +73,16 @@ export async function extractExpressions (imageData) {
             maxY = Math.max(maxY, i);
         }
         const [w, h] = [maxX - minX + 1, maxY - minY + 1];
+        const maxSize = Math.max(w, h) + 5;
+
         const imgData = new ImageData(
-            new Uint8ClampedArray(w * h * 4).fill(255),
-            w, h
+            new Uint8ClampedArray(4 * maxSize * maxSize).fill(255),
+            maxSize
         );
         for (let [i, j] of comp) {
-            const idx = ((i - minY) * w + (j - minX)) * 4;
+            const row = i - minY + Math.floor((maxSize - h) / 2);
+            const col = j - minX + Math.floor((maxSize - w) / 2);
+            const idx = (row * maxSize + col) * 4;
             imgData.data[idx] = imgData.data[idx + 1] = imgData.data[idx + 2] = 0;
         }
         expressionImagesData.push(imgData);
