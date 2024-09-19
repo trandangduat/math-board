@@ -1,7 +1,7 @@
 import * as tf from '@tensorflow/tfjs';
 import { extractExpressions, preprocessImage } from './imageProcessing';
 
-const MODEL_PATH = '../../public/recognizer_model/model.json';
+const MODEL_PATH = 'recognizer_model/model.json';
 const MathExpr = [ '!', '(', ')', '+', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=', 'X', 'cos', 'div', 'i', 'j', 'k', 'log', 'pi', 'sin', 'sqrt', 'tan', 'times', 'u', 'v', 'y', 'z' ];
 
 let model = null;
