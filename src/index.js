@@ -1,13 +1,16 @@
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
-import { loadModel, predict, predictExpressions } from "./model/model.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
 const offscreenLayer = new Layer("offscreen");
 const History = new Stack();
 const DeletedHistory = new Stack();
+const predictWorker = new Worker(
+    new URL("./model/worker.js", import.meta.url), {
+    type: 'module'
+});
 
 const mousePosTracker = document.getElementById("mouse-pos");
 const undoButton = document.getElementById("undo");
@@ -147,7 +150,18 @@ function redo(event) {
 
 async function capture() {
     const imgData = mainLayer.getSnapshot(drawingRect.getRect());
-    await predictExpressions(imgData);
+    predictWorker.postMessage({
+        message: "PREDICT",
+        imgData: imgData
+    });
+    predictWorker.onmessage = (e) => {
+        console.log(e.data);
+        predictWorker.onmessage = null;
+    };
+    predictWorker.onerror = (e) => {
+        console.error(e.message);
+        predictWorker.onerror = null;
+    };
 }
 
 function getMousePos (e) {
@@ -204,6 +218,14 @@ function finishDrawing (e) {
 }
 
 (async function main() {
+    predictWorker.postMessage({
+        message: "LOAD",
+    });
+    predictWorker.onmessage = (e) => {
+        console.log(e.data);
+        predictWorker.onmessage = null;
+    };
+
     document.body.appendChild(mainLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
 
@@ -237,5 +259,4 @@ function finishDrawing (e) {
 
     draw();
 
-    await loadModel();
 })()

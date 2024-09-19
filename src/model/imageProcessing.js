@@ -4,7 +4,7 @@ import { thinning } from './thinning';
 
 const IMAGE_SIZE = 45;
 
-const text_input = document.getElementById("text_input");
+// const text_input = document.getElementById("text_input");
 // const test_canvas = document.getElementById("test");
 // const test_ctx = test_canvas.getContext("2d");
 
@@ -37,8 +37,6 @@ export async function extractExpressions (imageData) {
     img.greyscale();
     const [width, height] = [img.bitmap.width, img.bitmap.height];
 
-    const t = Date.now();
-
     let imgArray = [];
     let marked = [];
     let currentRow = [];
@@ -52,7 +50,7 @@ export async function extractExpressions (imageData) {
             currentRow = [];
         }
     }
-    updateText(imgArray);
+    // updateText(imgArray);
     for (let j = 0; j < width; j++) {
         for (let i = 0; i < height; i++) {
             if (imgArray[i][j] === 0 && !marked[i][j]) {
@@ -109,10 +107,7 @@ export async function extractExpressions (imageData) {
         expressionImagesData.push(imgData);
         k++;
     }
-
     console.log("Number of components: ", components.length);
-
-    console.log("time elapsed: ", Date.now() - t, "ms");
     return expressionImagesData;
 }
 
@@ -126,12 +121,5 @@ export async function preprocessImage (imageData) {
         imgArray.push(value);
     }
     const imgArrayThinned = thinning(imgArray);
-    // text_input.value = "";
-    for (let i = 0; i < imgArrayThinned.length; i++) {
-        text_input.value += imgArrayThinned[i] + " ";
-        if ((i + 1) % IMAGE_SIZE === 0) {
-            text_input.value += "\n";
-        }
-    }
     return tf.tensor(imgArrayThinned, [1, IMAGE_SIZE, IMAGE_SIZE, 1]);
 }
