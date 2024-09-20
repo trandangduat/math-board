@@ -26,6 +26,12 @@ export async function predict(imageData) {
                 expression: MathExpr[i],
                 confidence: prediction[i]
             });
+            if (MathExpr[i] === 'X') {
+                results.push({
+                    expression: '*',
+                    confidence: prediction[i]
+                });
+            }
         }
     }
     return results;
@@ -34,17 +40,15 @@ export async function predict(imageData) {
 function getAllCombinations(expressions, currentString, currentConfidence, results) {
     let index = currentString.length;
     if (index === expressions.length) {
-        results.push({
-            expression: currentString,
-            confidence: currentConfidence,
-            evalResult: (() => {
-                try {
-                    return mexp.eval(currentString);
-                } catch (e) {
-                    return NaN;
-                }
-            })()
-        });
+        try {
+            results.push({
+                expression: currentString,
+                confidence: currentConfidence,
+                evalResult: eval(currentString)
+            });
+        } catch (e) {
+            console.warn("Cannot evaluate expressions: ", currentString);
+        }
         return;
     }
     expressions[index].forEach((expr) => {
@@ -64,6 +68,6 @@ export async function predictExpressions(imageData) {
     let results = [];
     getAllCombinations(expressions, "", 1, results);
 
-    console.log("Time taken: ", performance.now() - T);
-    return results;
+    console.log("Time taken: ", Math.round(performance.now() - T), "ms");
+    return results.sort((a, b) => b.confidence - a.confidence);
 }

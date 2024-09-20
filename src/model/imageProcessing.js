@@ -77,7 +77,7 @@ export async function extractExpressions (imageData) {
     for (let i = 1; i < compBoxes.length; i++) {
         const [x1, y1, w1, h1] = compBoxes[i];
         const [x2, y2, w2, h2] = compBoxes[i - 1];
-        if (x1 < x2 + w2 / 2) {
+        if (x1 < x2 + w2 / 2 || (x2 + w2) >= (x1 + w1 / 2)) {
             compBoxes[i] = [Math.min(x1, x2),
                                 Math.min(y1, y2),
                                 Math.max(x1 + w1, x2 + w2) - Math.min(x1, x2),
@@ -93,7 +93,7 @@ export async function extractExpressions (imageData) {
             k++;
             continue;
         }
-        const maxSize = Math.max(w, h) + 5;
+        const maxSize = Math.max(w, h);
         const imgData = new ImageData(
             new Uint8ClampedArray(4 * maxSize * maxSize).fill(255),
             maxSize
