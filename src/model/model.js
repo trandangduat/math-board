@@ -47,7 +47,7 @@ function getAllCombinations(expressions, currentString, currentConfidence, resul
                 evalResult: eval(currentString)
             });
         } catch (e) {
-            console.warn("Cannot evaluate expressions: ", currentString);
+            // console.warn("Cannot evaluate expressions: ", currentString);
         }
         return;
     }

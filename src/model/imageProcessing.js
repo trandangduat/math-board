@@ -4,10 +4,6 @@ import { thinning } from './thinning';
 
 const IMAGE_SIZE = 45;
 
-// const text_input = document.getElementById("text_input");
-// const test_canvas = document.getElementById("test");
-// const test_ctx = test_canvas.getContext("2d");
-
 const dir = [[0, 1], [1, 0], [0, -1], [-1, 0], [1, 1], [-1, 1], [-1, -1], [1, -1]];
 
 function dfs (arr, marked, i, j, comp) {
@@ -18,17 +14,6 @@ function dfs (arr, marked, i, j, comp) {
     marked[i][j] = true;
     for (let d of dir) {
         dfs(arr, marked, i + d[0], j + d[1], comp);
-    }
-}
-
-function updateText (arr) {
-    text_input.value = "";
-    for (let i = 0; i < arr.length; i++) {
-        let str = "";
-        for (let j = 0; j < arr[i].length; j++) {
-            str += arr[i][j] ? "1" : "0";
-        }
-        text_input.value += str + "\n";
     }
 }
 
@@ -50,7 +35,6 @@ export async function extractExpressions (imageData) {
             currentRow = [];
         }
     }
-    // updateText(imgArray);
     for (let j = 0; j < width; j++) {
         for (let i = 0; i < height; i++) {
             if (imgArray[i][j] === 0 && !marked[i][j]) {
