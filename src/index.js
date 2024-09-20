@@ -1,6 +1,7 @@
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
+import { BoundingRect } from "./BoundingRect.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -11,6 +12,8 @@ const predictWorker = new Worker(
     new URL("./model/worker.js", import.meta.url), {
     type: 'module'
 });
+const mainBoundingRect = new BoundingRect();
+const boundingRects = [];
 
 const mousePosTracker = document.getElementById("mouse-pos");
 const undoButton = document.getElementById("undo");
@@ -38,31 +41,6 @@ const brush = {
         uiLayer.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         uiLayer.ctx.strokeStyle = this.color;
         uiLayer.ctx.stroke();
-    }
-}
-
-const drawingRect = {
-    min_x: 99999,
-    min_y: 99999,
-    max_x: 0,
-    max_y: 0,
-    reset() {
-        this.min_x = this.min_y = 99999;
-        this.max_x = this.max_y = 0;
-    },
-    update(x, y) {
-        this.max_x = Math.max(this.max_x, x + brush.radius);
-        this.max_y = Math.max(this.max_y, y + brush.radius);
-        this.min_x = Math.min(this.min_x, Math.max(0, x - brush.radius));
-        this.min_y = Math.min(this.min_y, Math.max(0, y - brush.radius));
-    },
-    getRect() {
-        return {
-            x: this.min_x,
-            y: this.min_y,
-            w: this.max_x - this.min_x + 1,
-            h: this.max_y - this.min_y + 1
-        }
     }
 }
 
@@ -149,7 +127,7 @@ function redo(event) {
 }
 
 async function capture() {
-    const imgData = mainLayer.getSnapshot(drawingRect.getRect());
+    const imgData = mainLayer.getSnapshot(mainBoundingRect.getRect());
     predictWorker.postMessage({
         message: "PREDICT",
         imgData: imgData
@@ -180,7 +158,7 @@ function startDrawing (e) {
     tempPath = [];
     clearBuffer();
 
-    // drawingRect.reset();
+    boundingRects.push(new BoundingRect());
 
     mainPath.push(cursor);
     addToBuffer(cursor);
@@ -204,15 +182,32 @@ function whileDrawing (e) {
         }
         if (mainPath.length > 0) {
             const lastPoint = mainPath[mainPath.length - 1];
-            drawingRect.update(lastPoint.x, lastPoint.y);
+            mainBoundingRect.update(lastPoint.x, lastPoint.y, brush.radius);
+            boundingRects[boundingRects.length - 1].update(lastPoint.x, lastPoint.y, brush.radius);
         }
     }
 }
 
-function finishDrawing (e) {
+async function finishDrawing (e) {
     e.preventDefault();
 
     if (drawingState === DURING_PAINTING) {
+        if (boundingRects.length > 1) {
+            let curRect = boundingRects[boundingRects.length - 1].getRect();
+            let preRect = boundingRects[boundingRects.length - 2].getRect();
+            if (curRect.x < preRect.x) {
+                [curRect, preRect] = [preRect, curRect];
+            }
+            const xIntersect = (preRect.x + preRect.w) - curRect.x;
+            if (curRect.y < preRect.y) {
+                [curRect, preRect] = [preRect, curRect];
+            }
+            const yIntersect = (preRect.y + preRect.h) - curRect.y;
+            if (xIntersect * 2 >= Math.min(curRect.w, preRect.w) && yIntersect < 5) {
+                await capture();
+                mainBoundingRect.reset();
+            }
+        }
         drawingState = DONE_PAINTING;
     }
 }

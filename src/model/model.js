@@ -37,9 +37,20 @@ export async function predict(imageData) {
     return results;
 }
 
+function removeEqualSigns(expressionsString) {
+    let result = expressionsString.slice(0);
+    for (let i = 0; i < result.length; i++) {
+        if (result[i] === '=') {
+            result = result.slice(0, i) + result.slice(i + 1);
+        }
+    }
+    return result;
+}
+
 function getAllCombinations(expressions, currentString, currentConfidence, results) {
     let index = currentString.length;
     if (index === expressions.length) {
+        currentString = removeEqualSigns(currentString);
         try {
             results.push({
                 expression: currentString,
@@ -47,7 +58,7 @@ function getAllCombinations(expressions, currentString, currentConfidence, resul
                 evalResult: eval(currentString)
             });
         } catch (e) {
-            // console.warn("Cannot evaluate expressions: ", currentString);
+            console.warn("Cannot evaluate expressions: ", currentString);
         }
         return;
     }
