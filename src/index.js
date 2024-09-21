@@ -13,7 +13,7 @@ const predictWorker = new Worker(
     new URL("./model/worker.js", import.meta.url), {
     type: 'module'
 });
-const mainBoundingRects = [new BoundingRect()];
+const mainBoundingRects = [];
 const boundingRects = [];
 
 const mousePosTracker = document.getElementById("mouse-pos");
@@ -154,22 +154,6 @@ async function capture (rect) {
     };
 }
 
-function closestMainBoundingRect() {
-    let minDist = Number.MAX_VALUE;
-    let minIndex = -1;
-    for (let i = 0; i < mainBoundingRects.length; i++) {
-        const rect = mainBoundingRects[i].getRect();
-        const dx = Math.max(0, Math.max(rect.x - cursor.x, cursor.x - (rect.x + rect.w)));
-        const dy = Math.max(0, Math.max(rect.y - cursor.y, cursor.y - (rect.y + rect.h)));
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < minDist) {
-            minDist = dist;
-            minIndex = i;
-        }
-    }
-    return minIndex;
-}
-
 function getMousePos (e) {
     return {
         x: e.clientX - mainLayer.rect().left,
@@ -219,34 +203,8 @@ async function finishDrawing (e) {
     e.preventDefault();
 
     if (drawingState === DURING_PAINTING) {
-        const {x, y, w, h} = boundingRects[boundingRects.length - 1].getRect();
-        let bestBox = {
-            dx: 999999,
-            index: -1
-        };
-        for (let i = 0; i < mainBoundingRects.length; i++) {
-            const rect = mainBoundingRects[i];
-            if (y > rect.max_y || y + h < rect.min_y) {
-                continue;
-            }
-            if (x > rect.max_x) {
-                const dx = x - rect.max_x;
-                if (dx < bestBox.dx) {
-                    bestBox.dx = dx;
-                    bestBox.index = i;
-                }
-            } else if (x + w < rect.min_x) {
-                const dx = rect.min_x - (x + w);
-                if (dx < bestBox.dx) {
-                    bestBox.dx = dx;
-                    bestBox.index = i;
-                }
-            } else {
-                bestBox.dx = 0;
-                bestBox.index = i;
-            }
-        }
-        if (bestBox.index === -1 || bestBox.dx > w * 2) {
+        const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
+        if (bestBox.index === -1) {
             mainBoundingRects.push(new BoundingRect());
             mainBoundingRects[mainBoundingRects.length - 1].join(boundingRects[boundingRects.length - 1]);
         } else {
@@ -265,8 +223,7 @@ async function finishDrawing (e) {
             }
             const yIntersect = (preRect.y + preRect.h) - curRect.y;
             if (xIntersect * 2 >= Math.min(curRect.w, preRect.w) && yIntersect < 5) {
-                const index = closestMainBoundingRect();
-                await capture(mainBoundingRects[index].getRect());
+                await capture(mainBoundingRects[bestBox.index].getRect());
             }
         }
         drawingState = DONE_PAINTING;
