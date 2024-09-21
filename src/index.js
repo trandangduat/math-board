@@ -21,10 +21,14 @@ const undoButton = document.getElementById("undo");
 const redoButton = document.getElementById("redo");
 const brushSizeSlider = document.getElementById("brush-size");
 const brushColorPicker = document.getElementById("brush-color");
-const brushModeToggle = document.getElementById("toggle-brush-mode");
+const eraserSizeSlider = document.getElementById("eraser-size");
+const [brushButton, eraserButton] = [
+    document.getElementById("brush-mode"),
+    document.getElementById("eraser-mode")
+];
 
 const [BEFORE_PAINTING, DURING_PAINTING, DONE_PAINTING] = [0, 1, 2];
-const [MODE_DRAW, MODE_ERASER] = [0, 1];
+const [MODE_BRUSH, MODE_ERASE] = [0, 1];
 
 const cursor = {
     x: 0,
@@ -34,7 +38,6 @@ const cursor = {
 const brush = {
     x: 0,
     y: 0,
-    mode: MODE_DRAW,
     radius: 2,
     color: "black",
     draw() {
@@ -45,13 +48,26 @@ const brush = {
     }
 }
 
+const eraser = {
+    x: 0,
+    y: 0,
+    radius: 2,
+    draw() {
+        uiLayer.ctx.beginPath();
+        uiLayer.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        uiLayer.ctx.strokeStyle = "black";
+        uiLayer.ctx.stroke();
+    }
+}
+
 let mainPath = [];
 let tempPath = [];
 let drawingState = false;
+let actionType = MODE_BRUSH;
 
 function drawBrushPoint (x, y) {
     mainLayer.ctx.beginPath();
-    mainLayer.ctx.arc(x, y, brush.radius, 0, Math.PI * 2);
+    mainLayer.ctx.arc(x, y, (actionType == MODE_BRUSH ? brush.radius : eraser.radius), 0, Math.PI * 2);
     mainLayer.ctx.fillStyle = brush.color;
     mainLayer.ctx.fill();
 }
@@ -65,7 +81,7 @@ function drawStroke (path) {
 function clear() {
     uiLayer.clear();
     boundingRectLayer.clear();
-    if (brush.mode == MODE_DRAW) {
+    if (actionType == MODE_BRUSH) {
         mainLayer.clone(offscreenLayer);
     }
 }
@@ -74,13 +90,19 @@ function update() {
     mousePosTracker.innerHTML = `(x: ${cursor.x}, y: ${cursor.y})`;
     brush.x = cursor.x;
     brush.y = cursor.y;
+    eraser.x = cursor.x;
+    eraser.y = cursor.y;
 }
 
 function draw() {
     clear();
     update();
 
-    brush.draw();
+    if (actionType == MODE_BRUSH) {
+        brush.draw();
+    } else if (actionType == MODE_ERASE) {
+        eraser.draw();
+    }
     if (drawingState !== BEFORE_PAINTING) {
         drawStroke([...mainPath, ...tempPath]);
     }
@@ -92,6 +114,7 @@ function draw() {
         redoButton.disabled = true;
         undoButton.disabled = false;
     }
+    // Drawing bounding boxes (for debugging)
     for (let bdx of boundingRects) {
         const rect = bdx.getRect();
         boundingRectLayer.ctx.strokeStyle = "green";
@@ -257,18 +280,40 @@ async function finishDrawing (e) {
 
     undoButton.addEventListener("click", undo);
     redoButton.addEventListener("click", redo);
+
     brushSizeSlider.addEventListener("input", (e) => {
         brush.radius = parseInt(e.target.value);
     });
     brushColorPicker.addEventListener("input", (e) => {
         brush.color = e.target.value;
     });
-    brushModeToggle.addEventListener("click", (e) => {
-        brush.mode = (brush.mode === MODE_DRAW ? MODE_ERASER : MODE_DRAW);
-        brushModeToggle.innerHTML = (brush.mode === MODE_DRAW ? "Draw" : "Erase");
-        mainLayer.setCompositeOperation(brush.mode === MODE_ERASER ? "destination-out" : "source-over");
-        brushColorPicker.disabled = (brush.mode === MODE_ERASER);
+    eraserSizeSlider.addEventListener("input", (e) => {
+        eraser.radius = parseInt(e.target.value);
     });
+
+    [brushButton, eraserButton].forEach((button) => {
+        button.addEventListener("click", () => {
+            [brushButton, eraserButton].forEach((btn) => {
+                const controlGroup = btn.parentElement.querySelector(".control");
+                if (btn !== button) {
+                    btn.classList.remove("active");
+                    controlGroup.style.display = "none";
+                } else {
+                    btn.classList.remove("active");
+                    controlGroup.style.display = "block";
+                }
+            });
+            button.classList.add("active");
+            if (button === brushButton) {
+                actionType = MODE_BRUSH;
+                mainLayer.setCompositeOperation("source-over");
+            } else if (button === eraserButton) {
+                actionType = MODE_ERASE;
+                mainLayer.setCompositeOperation("destination-out");
+            }
+        });
+    });
+
     document.getElementById("capture").addEventListener("click", capture);
 
     draw();

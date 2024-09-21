@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
 * {
     margin: 0;
     padding: 0;
@@ -13,6 +15,9 @@ body {
     background-image: url('../SVG/graph-paper.svg');
     background-color: #fff7ed;
     overflow: hidden;
+    font-family: "Inter", sans-serif;
+    font-optical-sizing: auto;
+    color: #181410;
 }
 
 canvas {
@@ -23,24 +28,78 @@ canvas {
     left: 0;
 }
 
-#control-panel {
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 99;
-    display: flex;
-    flex-direction: column;
-}
-
-#control-panel .btn {
+button {
+    --primary-color: hsl(33, 100%, 97%);
+    --text-color: hsl(30, 20%, 8%);
+    --hover-color: hsl(35, 61%, 95%);
+    --active-color: hsl(35, 39%, 90%);
+    --disabled-color: hsl(35, 61%, 90%);
+    outline: 0;
+    border: 0;
     padding: 0.5rem 1rem;
-    cursor: pointer;
-    font-size: large;
+    border-radius: .5rem;
+    font-size: 14px;
+    background-color: var(--primary-color);
+    font-family: "Inter", sans-serif;
+    font-weight: 500;
+    color: var(--text-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
 }
 
-#controls #brush-options {
+button:hover {
+    cursor: pointer;
+    background-color: var(--hover-color);
+}
+
+button:active {
+    background-color: var(--active-color);
+}
+
+button:disabled {
+    background-color: var(--disabled-color);
+    color: #c4b9a8;
+    cursor: not-allowed;
+}
+
+#control-panel {
+    user-select: none;
     position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 99;
+    top: 30px;
+    left: 50%;
+    min-width: max-content;
+    padding: .75rem 1.5rem;
+    transform: translate(-50%, 0);
+    background-color: rgba(250, 235, 215, 0.5);
+    z-index: 99999;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    border-radius: .5rem;
+    backdrop-filter: blur(5px);
+}
+
+#control-panel .btn.active {
+    background-color: var(--text-color);
+    color: white;
+}
+
+#control-panel .group,
+#control-panel .group .control {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+}
+
+#control-panel .separator {
+    height: 1rem;
+    width: 1px;
+    background-color: rgba(24, 20, 16, 0.2);
+    margin: 0 1rem;
 }
