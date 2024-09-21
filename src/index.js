@@ -6,13 +6,14 @@ import { BoundingRect } from "./BoundingRect.js";
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
 const offscreenLayer = new Layer("offscreen");
+const boundingRectLayer = new Layer("bounding-rect");
 const History = new Stack();
 const DeletedHistory = new Stack();
 const predictWorker = new Worker(
     new URL("./model/worker.js", import.meta.url), {
     type: 'module'
 });
-const mainBoundingRect = new BoundingRect();
+const mainBoundingRects = [new BoundingRect()];
 const boundingRects = [];
 
 const mousePosTracker = document.getElementById("mouse-pos");
@@ -63,6 +64,7 @@ function drawStroke (path) {
 
 function clear() {
     uiLayer.clear();
+    boundingRectLayer.clear();
     if (brush.mode == MODE_DRAW) {
         mainLayer.clone(offscreenLayer);
     }
@@ -89,6 +91,16 @@ function draw() {
         DeletedHistory.clear();
         redoButton.disabled = true;
         undoButton.disabled = false;
+    }
+    for (let bdx of boundingRects) {
+        const rect = bdx.getRect();
+        boundingRectLayer.ctx.strokeStyle = "green";
+        boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    }
+    for (let bdx of mainBoundingRects) {
+        const rect = bdx.getRect();
+        boundingRectLayer.ctx.strokeStyle = "blue";
+        boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
     }
 
     requestAnimationFrame(draw);
@@ -126,8 +138,8 @@ function redo(event) {
     }
 }
 
-async function capture() {
-    const imgData = mainLayer.getSnapshot(mainBoundingRect.getRect());
+async function capture (rect) {
+    const imgData = mainLayer.getSnapshot(rect);
     predictWorker.postMessage({
         message: "PREDICT",
         imgData: imgData
@@ -140,6 +152,22 @@ async function capture() {
         console.error(e.message);
         predictWorker.onerror = null;
     };
+}
+
+function closestMainBoundingRect() {
+    let minDist = Number.MAX_VALUE;
+    let minIndex = -1;
+    for (let i = 0; i < mainBoundingRects.length; i++) {
+        const rect = mainBoundingRects[i].getRect();
+        const dx = Math.max(0, Math.max(rect.x - cursor.x, cursor.x - (rect.x + rect.w)));
+        const dy = Math.max(0, Math.max(rect.y - cursor.y, cursor.y - (rect.y + rect.h)));
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < minDist) {
+            minDist = dist;
+            minIndex = i;
+        }
+    }
+    return minIndex;
 }
 
 function getMousePos (e) {
@@ -182,7 +210,6 @@ function whileDrawing (e) {
         }
         if (mainPath.length > 0) {
             const lastPoint = mainPath[mainPath.length - 1];
-            mainBoundingRect.update(lastPoint.x, lastPoint.y, brush.radius);
             boundingRects[boundingRects.length - 1].update(lastPoint.x, lastPoint.y, brush.radius);
         }
     }
@@ -192,6 +219,40 @@ async function finishDrawing (e) {
     e.preventDefault();
 
     if (drawingState === DURING_PAINTING) {
+        const {x, y, w, h} = boundingRects[boundingRects.length - 1].getRect();
+        let bestBox = {
+            dx: 999999,
+            index: -1
+        };
+        for (let i = 0; i < mainBoundingRects.length; i++) {
+            const rect = mainBoundingRects[i];
+            if (y > rect.max_y || y + h < rect.min_y) {
+                continue;
+            }
+            if (x > rect.max_x) {
+                const dx = x - rect.max_x;
+                if (dx < bestBox.dx) {
+                    bestBox.dx = dx;
+                    bestBox.index = i;
+                }
+            } else if (x + w < rect.min_x) {
+                const dx = rect.min_x - (x + w);
+                if (dx < bestBox.dx) {
+                    bestBox.dx = dx;
+                    bestBox.index = i;
+                }
+            } else {
+                bestBox.dx = 0;
+                bestBox.index = i;
+            }
+        }
+        if (bestBox.index === -1 || bestBox.dx > w * 2) {
+            mainBoundingRects.push(new BoundingRect());
+            mainBoundingRects[mainBoundingRects.length - 1].join(boundingRects[boundingRects.length - 1]);
+        } else {
+            mainBoundingRects[bestBox.index].join(boundingRects[boundingRects.length - 1]);
+        }
+
         if (boundingRects.length > 1) {
             let curRect = boundingRects[boundingRects.length - 1].getRect();
             let preRect = boundingRects[boundingRects.length - 2].getRect();
@@ -204,8 +265,8 @@ async function finishDrawing (e) {
             }
             const yIntersect = (preRect.y + preRect.h) - curRect.y;
             if (xIntersect * 2 >= Math.min(curRect.w, preRect.w) && yIntersect < 5) {
-                await capture();
-                mainBoundingRect.reset();
+                const index = closestMainBoundingRect();
+                await capture(mainBoundingRects[index].getRect());
             }
         }
         drawingState = DONE_PAINTING;
@@ -222,6 +283,7 @@ async function finishDrawing (e) {
     };
 
     document.body.appendChild(mainLayer.canvas);
+    document.body.appendChild(boundingRectLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
 
     addEventListener("mousemove", (e) => {

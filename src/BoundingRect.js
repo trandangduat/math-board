@@ -24,4 +24,10 @@ export class BoundingRect {
             h: this.max_y - this.min_y + 1
         }
     }
+    join (other) {
+        this.min_x = Math.min(this.min_x, other.min_x);
+        this.min_y = Math.min(this.min_y, other.min_y);
+        this.max_x = Math.max(this.max_x, other.max_x);
+        this.max_y = Math.max(this.max_y, other.max_y);
+    }
 }
