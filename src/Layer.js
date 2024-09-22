@@ -2,9 +2,21 @@ export class Layer {
     constructor (id) {
         this.id = id;
         this.canvas = document.createElement("canvas");
+        this.canvas.id = id;
         this.canvas.width = innerWidth;
         this.canvas.height = innerHeight;
         this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
+    }
+    drawBrushPoint (x, y, brush) {
+        this.ctx.beginPath();
+        this.ctx.arc(x, y, brush.radius, 0, Math.PI * 2);
+        this.ctx.fillStyle = brush.color;
+        this.ctx.fill();
+    }
+    drawStroke (path, brush) {
+        path.forEach(point => {
+            this.drawBrushPoint(point.x, point.y, brush);
+        })
     }
     rect () {
         return this.canvas.getBoundingClientRect();
@@ -18,6 +30,16 @@ export class Layer {
             this.ctx.globalCompositeOperation = "source-over";
         }
         this.clear();
+        this.ctx.drawImage(otherLayer.canvas, 0, 0);
+        if (compositeOperation !== "source-over") {
+            this.ctx.globalCompositeOperation = compositeOperation;
+        }
+    }
+    joint (otherLayer) {
+        const compositeOperation = this.ctx.globalCompositeOperation;
+        if (this.ctx.globalCompositeOperation !== "source-over") {
+            this.ctx.globalCompositeOperation = "source-over";
+        }
         this.ctx.drawImage(otherLayer.canvas, 0, 0);
         if (compositeOperation !== "source-over") {
             this.ctx.globalCompositeOperation = compositeOperation;

@@ -6,6 +6,8 @@ import { BoundingRect } from "./BoundingRect.js";
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
 const offscreenLayer = new Layer("offscreen");
+const drawingLayer = new Layer("drawing");
+const tempLayer = new Layer("temp");
 const boundingRectLayer = new Layer("bounding-rect");
 const History = new Stack();
 const DeletedHistory = new Stack();
@@ -60,30 +62,15 @@ const eraser = {
     }
 }
 
-let mainPath = [];
 let tempPath = [];
-let drawingState = false;
+let newPath = [];
+let drawingState = BEFORE_PAINTING;
 let actionType = MODE_BRUSH;
-
-function drawBrushPoint (x, y) {
-    mainLayer.ctx.beginPath();
-    mainLayer.ctx.arc(x, y, (actionType == MODE_BRUSH ? brush.radius : eraser.radius), 0, Math.PI * 2);
-    mainLayer.ctx.fillStyle = brush.color;
-    mainLayer.ctx.fill();
-}
-
-function drawStroke (path) {
-    path.forEach(point => {
-        drawBrushPoint(point.x, point.y);
-    })
-}
 
 function clear() {
     uiLayer.clear();
     boundingRectLayer.clear();
-    if (actionType == MODE_BRUSH) {
-        mainLayer.clone(offscreenLayer);
-    }
+    tempLayer.clear();
 }
 
 function update() {
@@ -103,16 +90,23 @@ function draw() {
     } else if (actionType == MODE_ERASE) {
         eraser.draw();
     }
-    if (drawingState !== BEFORE_PAINTING) {
-        drawStroke([...mainPath, ...tempPath]);
+
+    if (drawingState == DURING_PAINTING) {
+        switch (actionType) {
+            case MODE_BRUSH: {
+                drawingLayer.drawStroke(newPath, brush);
+                tempLayer.drawStroke(tempPath, brush);
+                break;
+            }
+            case MODE_ERASE: {
+                mainLayer.drawStroke(newPath, eraser);
+                break;
+            }
+        }
+        newPath = [newPath[newPath.length - 1]];
     }
     if (drawingState == DONE_PAINTING) {
         drawingState = BEFORE_PAINTING;
-        offscreenLayer.clone(mainLayer);
-        History.push(mainLayer.getImageData());
-        DeletedHistory.clear();
-        redoButton.disabled = true;
-        undoButton.disabled = false;
     }
     // Drawing bounding boxes (for debugging)
     for (let bdx of boundingRects) {
@@ -188,14 +182,13 @@ function startDrawing (e) {
     e.preventDefault();
     drawingState = DURING_PAINTING;
 
-    const cursor = getMousePos(e);
-    mainPath = [];
     tempPath = [];
+    newPath = [];
     clearBuffer();
-
     boundingRects.push(new BoundingRect());
 
-    mainPath.push(cursor);
+    const cursor = getMousePos(e);
+    newPath.push(cursor);
     addToBuffer(cursor);
 }
 
@@ -204,20 +197,31 @@ function whileDrawing (e) {
 
     if (drawingState == DURING_PAINTING) {
         const cursor = getMousePos(e);
-        addToBuffer(cursor);
-        const nextPoints = getNextPoints();
-        if (nextPoints.length > 0) {
-            // save one stable smoothed point
-            mainPath.push(...createStroke(mainPath[mainPath.length - 1], nextPoints[0]));
-            // save the rest of average points between the stable point to the cursor
-            tempPath = [];
-            for (let i = 1; i < nextPoints.length; i++) {
-                tempPath.push(...createStroke(nextPoints[i - 1], nextPoints[i]));
+
+        switch (actionType) {
+            case MODE_BRUSH:{
+                addToBuffer(cursor);
+                const nextPoints = getNextPoints();
+                if (nextPoints.length > 0) {
+                    // save one stable smoothed point
+                    newPath.push(...createStroke(newPath[newPath.length - 1], nextPoints[0]));
+                    // save the rest of average points between the stable point to the cursor
+                    tempPath = [];
+                    for (let i = 1; i < nextPoints.length; i++) {
+                        tempPath.push(...createStroke(nextPoints[i - 1], nextPoints[i]));
+                    }
+                }
+                if (newPath.length > 0) {
+                    const lastPoint = newPath[newPath.length - 1];
+                    boundingRects[boundingRects.length - 1].update(lastPoint.x, lastPoint.y, brush.radius);
+                }
+                break;
             }
-        }
-        if (mainPath.length > 0) {
-            const lastPoint = mainPath[mainPath.length - 1];
-            boundingRects[boundingRects.length - 1].update(lastPoint.x, lastPoint.y, brush.radius);
+
+            case MODE_ERASE: {
+                newPath.push(...createStroke(newPath[newPath.length - 1], cursor));
+                break;
+            }
         }
     }
 }
@@ -226,27 +230,42 @@ async function finishDrawing (e) {
     e.preventDefault();
 
     if (drawingState === DURING_PAINTING) {
-        const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
-        if (bestBox.index === -1) {
-            mainBoundingRects.push(new BoundingRect());
-            mainBoundingRects[mainBoundingRects.length - 1].join(boundingRects[boundingRects.length - 1]);
-        } else {
-            mainBoundingRects[bestBox.index].join(boundingRects[boundingRects.length - 1]);
-        }
+        // Joint the drawing layer to the main layer and clear the drawing layer
+        mainLayer.joint(drawingLayer);
+        mainLayer.joint(tempLayer);
+        drawingLayer.clear();
+        offscreenLayer.clone(mainLayer);
+        History.push(mainLayer.getImageData());
+        DeletedHistory.clear();
+        redoButton.disabled = true;
+        undoButton.disabled = false;
 
-        if (boundingRects.length > 1) {
-            let curRect = boundingRects[boundingRects.length - 1].getRect();
-            let preRect = boundingRects[boundingRects.length - 2].getRect();
-            if (curRect.x < preRect.x) {
-                [curRect, preRect] = [preRect, curRect];
-            }
-            const xIntersect = (preRect.x + preRect.w) - curRect.x;
-            if (curRect.y < preRect.y) {
-                [curRect, preRect] = [preRect, curRect];
-            }
-            const yIntersect = (preRect.y + preRect.h) - curRect.y;
-            if (xIntersect * 2 >= Math.min(curRect.w, preRect.w) && yIntersect < 5) {
-                await capture(mainBoundingRects[bestBox.index].getRect());
+        switch (actionType) {
+            case MODE_BRUSH: {
+                const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
+                if (bestBox.index === -1) {
+                    mainBoundingRects.push(new BoundingRect());
+                    mainBoundingRects[mainBoundingRects.length - 1].join(boundingRects[boundingRects.length - 1]);
+                } else {
+                    mainBoundingRects[bestBox.index].join(boundingRects[boundingRects.length - 1]);
+                }
+
+                if (boundingRects.length > 1) {
+                    let curRect = boundingRects[boundingRects.length - 1].getRect();
+                    let preRect = boundingRects[boundingRects.length - 2].getRect();
+                    if (curRect.x < preRect.x) {
+                        [curRect, preRect] = [preRect, curRect];
+                    }
+                    const xIntersect = (preRect.x + preRect.w) - curRect.x;
+                    if (curRect.y < preRect.y) {
+                        [curRect, preRect] = [preRect, curRect];
+                    }
+                    const yIntersect = (preRect.y + preRect.h) - curRect.y;
+                    if (xIntersect * 2 >= Math.min(curRect.w, preRect.w) && yIntersect < 5) {
+                        await capture(mainBoundingRects[bestBox.index].getRect());
+                    }
+                }
+                break;
             }
         }
         drawingState = DONE_PAINTING;
@@ -264,6 +283,8 @@ async function finishDrawing (e) {
 
     document.body.appendChild(mainLayer.canvas);
     document.body.appendChild(boundingRectLayer.canvas);
+    document.body.appendChild(drawingLayer.canvas);
+    document.body.appendChild(tempLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
 
     addEventListener("mousemove", (e) => {
