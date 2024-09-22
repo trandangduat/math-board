@@ -32,11 +32,6 @@ const [brushButton, eraserButton] = [
 const [BEFORE_PAINTING, DURING_PAINTING, DONE_PAINTING] = [0, 1, 2];
 const [MODE_BRUSH, MODE_ERASE] = [0, 1];
 
-const cursor = {
-    x: 0,
-    y: 0
-};
-
 const brush = {
     x: 0,
     y: 0,
@@ -73,17 +68,8 @@ function clear() {
     tempLayer.clear();
 }
 
-function update() {
-    mousePosTracker.innerHTML = `(x: ${cursor.x}, y: ${cursor.y})`;
-    brush.x = cursor.x;
-    brush.y = cursor.y;
-    eraser.x = cursor.x;
-    eraser.y = cursor.y;
-}
-
 function draw() {
     clear();
-    update();
 
     if (actionType == MODE_BRUSH) {
         brush.draw();
@@ -104,9 +90,6 @@ function draw() {
             }
         }
         newPath = [newPath[newPath.length - 1]];
-    }
-    if (drawingState == DONE_PAINTING) {
-        drawingState = BEFORE_PAINTING;
     }
     // Drawing bounding boxes (for debugging)
     for (let bdx of boundingRects) {
@@ -194,10 +177,14 @@ function startDrawing (e) {
 
 function whileDrawing (e) {
     e.preventDefault();
+    const cursor = getMousePos(e);
+    brush.x = cursor.x;
+    brush.y = cursor.y;
+    eraser.x = cursor.x;
+    eraser.y = cursor.y;
+    mousePosTracker.textContent = `(${cursor.x}, ${cursor.y})`;
 
     if (drawingState == DURING_PAINTING) {
-        const cursor = getMousePos(e);
-
         switch (actionType) {
             case MODE_BRUSH:{
                 addToBuffer(cursor);
@@ -226,6 +213,23 @@ function whileDrawing (e) {
     }
 }
 
+function detectEqualSign() {
+    if (boundingRects.length < 2) {
+        return false;
+    }
+    let curRect = boundingRects[boundingRects.length - 1].getRect();
+    let preRect = boundingRects[boundingRects.length - 2].getRect();
+    if (curRect.x < preRect.x) {
+        [curRect, preRect] = [preRect, curRect];
+    }
+    const xIntersect = (preRect.x + preRect.w) - curRect.x;
+    if (curRect.y < preRect.y) {
+        [curRect, preRect] = [preRect, curRect];
+    }
+    const yIntersect = (preRect.y + preRect.h) - curRect.y;
+    return (xIntersect * 2 >= Math.min(curRect.w, preRect.w) && yIntersect < 5);
+}
+
 async function finishDrawing (e) {
     e.preventDefault();
 
@@ -249,26 +253,13 @@ async function finishDrawing (e) {
                 } else {
                     mainBoundingRects[bestBox.index].join(boundingRects[boundingRects.length - 1]);
                 }
-
-                if (boundingRects.length > 1) {
-                    let curRect = boundingRects[boundingRects.length - 1].getRect();
-                    let preRect = boundingRects[boundingRects.length - 2].getRect();
-                    if (curRect.x < preRect.x) {
-                        [curRect, preRect] = [preRect, curRect];
-                    }
-                    const xIntersect = (preRect.x + preRect.w) - curRect.x;
-                    if (curRect.y < preRect.y) {
-                        [curRect, preRect] = [preRect, curRect];
-                    }
-                    const yIntersect = (preRect.y + preRect.h) - curRect.y;
-                    if (xIntersect * 2 >= Math.min(curRect.w, preRect.w) && yIntersect < 5) {
-                        await capture(mainBoundingRects[bestBox.index].getRect());
-                    }
+                if (detectEqualSign()) {
+                    await capture(mainBoundingRects[bestBox.index].getRect());
                 }
                 break;
             }
         }
-        drawingState = DONE_PAINTING;
+        drawingState = BEFORE_PAINTING;
     }
 }
 
@@ -286,11 +277,6 @@ async function finishDrawing (e) {
     document.body.appendChild(drawingLayer.canvas);
     document.body.appendChild(tempLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
-
-    addEventListener("mousemove", (e) => {
-        cursor.x = e.clientX - mainLayer.rect().left;
-        cursor.y = e.clientY - mainLayer.rect().top;
-    });
 
     uiLayer.canvas.addEventListener("mousedown", startDrawing);
     uiLayer.canvas.addEventListener("mousemove", whileDrawing);
