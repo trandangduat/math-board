@@ -1,7 +1,5 @@
 import * as tf from '@tensorflow/tfjs';
 import { extractExpressions, preprocessImage } from './imageProcessing';
-import Mexp from 'math-expression-evaluator';
-const mexp = new Mexp();
 
 const MODEL_PATH = 'recognizer_model/model.json';
 const MathExpr = [ '!', '(', ')', '+', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=', 'X', 'cos', '/', 'i', 'j', 'k', 'log', 'pi', 'sin', 'sqrt', 'tan', '*', 'u', 'v', 'y', 'z' ];
@@ -10,6 +8,9 @@ let model = null;
 
 export async function loadModel() {
     model = await tf.loadLayersModel(MODEL_PATH);
+    // fake prediction to warm up the model
+    const img = await preprocessImage(new ImageData(1, 1));
+    const prediction = model.predict(img).dataSync();
 }
 
 export async function predict(imageData) {
@@ -21,7 +22,7 @@ export async function predict(imageData) {
     const prediction = model.predict(img).dataSync();
     const results = [];
     for (let i = 0; i < prediction.length; i++) {
-        if (prediction[i] >= 0.05) {
+        if (prediction[i] >= 0.1) {
             results.push({
                 expression: MathExpr[i],
                 confidence: prediction[i]
@@ -38,10 +39,10 @@ export async function predict(imageData) {
 }
 
 function removeEqualSigns(expressionsString) {
-    let result = expressionsString.slice(0);
-    for (let i = 0; i < result.length; i++) {
-        if (result[i] === '=') {
-            result = result.slice(0, i) + result.slice(i + 1);
+    let result = "";
+    for (const c of expressionsString) {
+        if (c !== '=') {
+            result += c;
         }
     }
     return result;
@@ -62,15 +63,18 @@ function getAllCombinations(expressions, currentString, currentConfidence, resul
         }
         return;
     }
+    //TODO: Fix undefined forEach happens when there are 2 expressions in last index
     expressions[index].forEach((expr) => {
         getAllCombinations(expressions, currentString + expr.expression, currentConfidence * expr.confidence, results);
     });
 }
 
 export async function predictExpressions(imageData) {
-    const expressionImages = await extractExpressions(imageData);
     let T = performance.now();
+    const expressionImages = await extractExpressions(imageData);
+    console.debug("Extracted expressions time: ", Math.round(performance.now() - T), "ms");
 
+    T = performance.now();
     let expressions = [];
     for (let imgData of expressionImages) {
         expressions.push(await predict(imgData));
@@ -78,7 +82,7 @@ export async function predictExpressions(imageData) {
     console.log(expressions);
     let results = [];
     getAllCombinations(expressions, "", 1, results);
+    console.debug("Predict time: ", Math.round(performance.now() - T), "ms");
 
-    console.log("Time taken: ", Math.round(performance.now() - T), "ms");
     return results.sort((a, b) => b.confidence - a.confidence);
 }
