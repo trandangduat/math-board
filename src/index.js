@@ -9,6 +9,7 @@ const offscreenLayer = new Layer("offscreen");
 const drawingLayer = new Layer("drawing");
 const tempLayer = new Layer("temp");
 const boundingRectLayer = new Layer("bounding-rect");
+const resultLayer = new Layer("result");
 const History = new Stack();
 const DeletedHistory = new Stack();
 const predictWorker = new Worker(
@@ -17,6 +18,7 @@ const predictWorker = new Worker(
 });
 const mainBoundingRects = [];
 const boundingRects = [];
+const resultRects = [];
 
 const mousePosTracker = document.getElementById("mouse-pos");
 const undoButton = document.getElementById("undo");
@@ -35,7 +37,7 @@ const [MODE_BRUSH, MODE_ERASE] = [0, 1];
 const brush = {
     x: 0,
     y: 0,
-    radius: 2,
+    radius: 4,
     color: "black",
     draw() {
         uiLayer.ctx.beginPath();
@@ -64,8 +66,10 @@ let actionType = MODE_BRUSH;
 
 function clear() {
     uiLayer.clear();
-    boundingRectLayer.clear();
-    tempLayer.clear();
+    // boundingRectLayer.clear();
+    if (drawingState === DURING_PAINTING) {
+        tempLayer.clear();
+    }
 }
 
 function draw() {
@@ -92,15 +96,32 @@ function draw() {
         newPath = [newPath[newPath.length - 1]];
     }
     // Drawing bounding boxes (for debugging)
-    for (let bdx of boundingRects) {
-        const rect = bdx.getRect();
-        boundingRectLayer.ctx.strokeStyle = "green";
-        boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
-    }
-    for (let bdx of mainBoundingRects) {
-        const rect = bdx.getRect();
-        boundingRectLayer.ctx.strokeStyle = "blue";
-        boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    // for (let bdx of boundingRects) {
+    //     const rect = bdx.getRect();
+    //     boundingRectLayer.ctx.strokeStyle = "green";
+    //     boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    // }
+    // for (let bdx of mainBoundingRects) {
+    //     const rect = bdx.getRect();
+    //     boundingRectLayer.ctx.strokeStyle = "blue";
+    //     boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    // }
+    // Draw result next to matching main bounding box
+    for (let res of resultRects) {
+        if (res.isRendered) {
+            continue;
+        }
+        const rect = mainBoundingRects.find((r) => r.id === res.bdrectId).getRect();
+        const fontSize = rect.h * 0.9;
+        const fontWeight = Math.min(900, Math.max(400, Math.round(brush.radius / 100 * 100)));
+        resultLayer.drawText(
+            res.value,
+            rect.x + rect.w + 10,
+            rect.y + rect.h / 2 + fontSize / 7,
+            `${fontWeight} ${fontSize}px Shantell Sans, cursive`,
+            "#FBAE56"
+        );
+        res.isRendered = true;
     }
 
     requestAnimationFrame(draw);
@@ -138,18 +159,26 @@ function redo(event) {
     }
 }
 
-async function capture (rect) {
+async function capture (bdRect) {
+    const rect = bdRect.getRect();
+    const id = bdRect.id;
+    console.log(id);
     const imgData = mainLayer.getSnapshot(rect);
     predictWorker.postMessage({
         message: "PREDICT",
         imgData: imgData
     });
     predictWorker.onmessage = (e) => {
-        console.log(e.data);
+        // console.log(e.data);
+        resultRects.push({
+            bdrectId: id,
+            value: e.data[0].evalResult,
+            isRendered: false
+        });
         predictWorker.onmessage = null;
     };
     predictWorker.onerror = (e) => {
-        console.error(e.message);
+        console.error("Worker error: ", e.message);
         predictWorker.onerror = null;
     };
 }
@@ -254,7 +283,7 @@ async function finishDrawing (e) {
                     mainBoundingRects[bestBox.index].join(boundingRects[boundingRects.length - 1]);
                 }
                 if (detectEqualSign()) {
-                    await capture(mainBoundingRects[bestBox.index].getRect());
+                    await capture(mainBoundingRects[bestBox.index]);
                 }
                 break;
             }
@@ -276,6 +305,7 @@ async function finishDrawing (e) {
     document.body.appendChild(boundingRectLayer.canvas);
     document.body.appendChild(drawingLayer.canvas);
     document.body.appendChild(tempLayer.canvas);
+    document.body.appendChild(resultLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
 
     uiLayer.canvas.addEventListener("mousedown", startDrawing);

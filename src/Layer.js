@@ -55,6 +55,12 @@ export class Layer {
     setCompositeOperation (operation) {
         this.ctx.globalCompositeOperation = operation;
     }
+    drawText (text, x, y, font, color) {
+        this.ctx.font = font;
+        this.ctx.fillStyle = color;
+        this.ctx.textBaseline = "middle";
+        this.ctx.fillText(text, x, y);
+    }
     getSnapshot (rect) {
         const [x, y, width, height] = [rect.x, rect.y, rect.w, rect.h];
         const offscreenCanvas = new OffscreenCanvas(width, height);
