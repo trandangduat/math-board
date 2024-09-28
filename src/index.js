@@ -337,7 +337,7 @@ async function finishDrawing (e) {
                     controlGroup.style.display = "none";
                 } else {
                     btn.classList.remove("active");
-                    controlGroup.style.display = "block";
+                    controlGroup.style.display = "flex";
                 }
             });
             button.classList.add("active");
@@ -350,8 +350,6 @@ async function finishDrawing (e) {
             }
         });
     });
-
-    document.getElementById("capture").addEventListener("click", capture);
 
     draw();
 
