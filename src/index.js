@@ -231,11 +231,11 @@ function whileDrawing (e) {
                 const nextPoints = getNextPoints();
                 if (nextPoints.length > 0) {
                     // save one stable smoothed point
-                    newPath.push(...createStroke(newPath[newPath.length - 1], nextPoints[0]));
+                    newPath.push(nextPoints[0]);
                     // save the rest of average points between the stable point to the cursor
                     tempPath = [];
                     for (let i = 1; i < nextPoints.length; i++) {
-                        tempPath.push(...createStroke(nextPoints[i - 1], nextPoints[i]));
+                        tempPath.push(nextPoints[i]);
                     }
                 }
                 if (newPath.length > 0) {
@@ -246,7 +246,7 @@ function whileDrawing (e) {
             }
 
             case MODE_ERASE: {
-                newPath.push(...createStroke(newPath[newPath.length - 1], cursor));
+                newPath.push(cursor);
                 break;
             }
         }
