@@ -93,6 +93,7 @@ function draw() {
                 tempLayer.drawStroke(tempPath, brush);
                 break;
             }
+
             case MODE_ERASE: {
                 mainLayer.drawStroke(newPath, eraser);
                 break;
@@ -114,7 +115,7 @@ function draw() {
     // Draw result next to matching main bounding box
     renderExpressionsResults();
 
-    requestAnimationFrame(draw);
+    // requestAnimationFrame(draw);
 }
 
 function undo(event) {
@@ -189,21 +190,32 @@ function getMousePos (e) {
 }
 
 function startDrawing (e) {
-    e.preventDefault();
-    drawingState = DURING_PAINTING;
-
-    tempPath = [];
-    newPath = [];
-    clearBuffer();
-    boundingRects.push(new BoundingRect());
-
     const cursor = getMousePos(e);
-    newPath.push(cursor);
-    addToBuffer(cursor);
+
+    if (drawingState === BEFORE_PAINTING) {
+        switch (actionType) {
+            case MODE_BRUSH: {
+                tempPath = [];
+                newPath = [];
+                clearBuffer();
+                boundingRects.push(new BoundingRect());
+                newPath.push(cursor);
+                addToBuffer(cursor);
+                break;
+            }
+
+            case MODE_ERASE: {
+                newPath = [];
+                newPath.push(cursor);
+                break;
+            }
+        }
+        draw();
+        drawingState = DURING_PAINTING;
+    }
 }
 
 function whileDrawing (e) {
-    e.preventDefault();
     const cursor = getMousePos(e);
     brush.x = cursor.x;
     brush.y = cursor.y;
@@ -213,7 +225,8 @@ function whileDrawing (e) {
 
     if (drawingState == DURING_PAINTING) {
         switch (actionType) {
-            case MODE_BRUSH:{
+
+            case MODE_BRUSH: {
                 addToBuffer(cursor);
                 const nextPoints = getNextPoints();
                 if (nextPoints.length > 0) {
@@ -237,6 +250,7 @@ function whileDrawing (e) {
                 break;
             }
         }
+        draw();
     }
 }
 
@@ -258,18 +272,16 @@ function detectEqualSign() {
 }
 
 async function finishDrawing (e) {
-    e.preventDefault();
 
     if (drawingState === DURING_PAINTING) {
-        // Joint the drawing layer to the main layer and clear the drawing layer
-        mainLayer.joint(drawingLayer);
-        mainLayer.joint(tempLayer);
-        drawingLayer.clear();
-        tempLayer.clear();
-        updateHistory();
-
         switch (actionType) {
             case MODE_BRUSH: {
+                mainLayer.joint(drawingLayer);
+                mainLayer.joint(tempLayer);
+                drawingLayer.clear();
+                tempLayer.clear();
+                updateHistory();
+
                 const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
                 if (bestBox.index === -1) {
                     mainBoundingRects.push(new BoundingRect());
@@ -282,7 +294,13 @@ async function finishDrawing (e) {
                 }
                 break;
             }
+
+            case MODE_ERASE: {
+                updateHistory();
+                break;
+            }
         }
+        draw();
         drawingState = BEFORE_PAINTING;
     }
 }
