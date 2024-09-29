@@ -16,9 +16,9 @@ const predictWorker = new Worker(
     new URL("./model/worker.js", import.meta.url), {
     type: 'module'
 });
-const mainBoundingRects = [];
-const boundingRects = [];
-const resultRects = [];
+let mainBoundingRects = [];
+let boundingRects = [];
+let resultRects = [];
 
 const mousePosTracker = document.getElementById("mouse-pos");
 const undoButton = document.getElementById("undo");
@@ -39,24 +39,12 @@ const brush = {
     y: 0,
     radius: 4,
     color: "black",
-    draw() {
-        uiLayer.ctx.beginPath();
-        uiLayer.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        uiLayer.ctx.strokeStyle = this.color;
-        uiLayer.ctx.stroke();
-    }
 }
 
 const eraser = {
     x: 0,
     y: 0,
     radius: 2,
-    draw() {
-        uiLayer.ctx.beginPath();
-        uiLayer.ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        uiLayer.ctx.strokeStyle = "black";
-        uiLayer.ctx.stroke();
-    }
 }
 
 let tempPath = [];
@@ -65,21 +53,38 @@ let drawingState = BEFORE_PAINTING;
 let actionType = MODE_BRUSH;
 
 function clear() {
-    uiLayer.clear();
-    // boundingRectLayer.clear();
+    // uiLayer.clear();
+    boundingRectLayer.clear();
     if (drawingState === DURING_PAINTING) {
         tempLayer.clear();
     }
 }
 
+function renderExpressionsResults() {
+    for (let res of resultRects) {
+        if (res.isRendered) {
+            continue;
+        }
+        const rect = mainBoundingRects.find((r) => r.id === res.bdrectId).getRect();
+        const fontSize = rect.h * 0.9;
+        const fontWeight = Math.min(900, Math.max(400, Math.round(brush.radius / 100 * 100)));
+        resultLayer.drawText(
+            res.value,
+            rect.x + rect.w + 10,
+            rect.y + rect.h / 2 + fontSize / 7,
+            `${fontWeight} ${fontSize}px Shantell Sans, cursive`,
+            "#FBAE56"
+        );
+        // draw text animation
+        mainLayer.joint(resultLayer);
+        resultLayer.clear();
+        updateHistory();
+        res.isRendered = true;
+    }
+}
+
 function draw() {
     clear();
-
-    if (actionType == MODE_BRUSH) {
-        brush.draw();
-    } else if (actionType == MODE_ERASE) {
-        eraser.draw();
-    }
 
     if (drawingState == DURING_PAINTING) {
         switch (actionType) {
@@ -101,28 +106,13 @@ function draw() {
     //     boundingRectLayer.ctx.strokeStyle = "green";
     //     boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
     // }
-    // for (let bdx of mainBoundingRects) {
-    //     const rect = bdx.getRect();
-    //     boundingRectLayer.ctx.strokeStyle = "blue";
-    //     boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
-    // }
-    // Draw result next to matching main bounding box
-    for (let res of resultRects) {
-        if (res.isRendered) {
-            continue;
-        }
-        const rect = mainBoundingRects.find((r) => r.id === res.bdrectId).getRect();
-        const fontSize = rect.h * 0.9;
-        const fontWeight = Math.min(900, Math.max(400, Math.round(brush.radius / 100 * 100)));
-        resultLayer.drawText(
-            res.value,
-            rect.x + rect.w + 10,
-            rect.y + rect.h / 2 + fontSize / 7,
-            `${fontWeight} ${fontSize}px Shantell Sans, cursive`,
-            "#FBAE56"
-        );
-        res.isRendered = true;
+    for (let bdx of mainBoundingRects) {
+        const rect = bdx.getRect();
+        boundingRectLayer.ctx.strokeStyle = "blue";
+        boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
     }
+    // Draw result next to matching main bounding box
+    renderExpressionsResults();
 
     requestAnimationFrame(draw);
 }
@@ -159,10 +149,17 @@ function redo(event) {
     }
 }
 
+function updateHistory() {
+    offscreenLayer.clone(mainLayer);
+    History.push(mainLayer.getImageData());
+    DeletedHistory.clear();
+    redoButton.disabled = true;
+    undoButton.disabled = false;
+}
+
 async function capture (bdRect) {
     const rect = bdRect.getRect();
     const id = bdRect.id;
-    console.log(id);
     const imgData = mainLayer.getSnapshot(rect);
     predictWorker.postMessage({
         message: "PREDICT",
@@ -170,6 +167,7 @@ async function capture (bdRect) {
     });
     predictWorker.onmessage = (e) => {
         // console.log(e.data);
+        resultRects = resultRects.filter(r => r.bdrectId !== id);
         resultRects.push({
             bdrectId: id,
             value: e.data[0].evalResult,
@@ -267,11 +265,8 @@ async function finishDrawing (e) {
         mainLayer.joint(drawingLayer);
         mainLayer.joint(tempLayer);
         drawingLayer.clear();
-        offscreenLayer.clone(mainLayer);
-        History.push(mainLayer.getImageData());
-        DeletedHistory.clear();
-        redoButton.disabled = true;
-        undoButton.disabled = false;
+        tempLayer.clear();
+        updateHistory();
 
         switch (actionType) {
             case MODE_BRUSH: {
@@ -305,7 +300,7 @@ async function finishDrawing (e) {
     document.body.appendChild(boundingRectLayer.canvas);
     document.body.appendChild(drawingLayer.canvas);
     document.body.appendChild(tempLayer.canvas);
-    document.body.appendChild(resultLayer.canvas);
+    // document.body.appendChild(resultLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
 
     uiLayer.canvas.addEventListener("mousedown", startDrawing);

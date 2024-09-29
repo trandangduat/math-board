@@ -9,8 +9,7 @@ let model = null;
 export async function loadModel() {
     model = await tf.loadLayersModel(MODEL_PATH);
     // fake prediction to warm up the model
-    const img = await preprocessImage(new ImageData(1, 1));
-    const prediction = model.predict(img).dataSync();
+    const prediction = model.predict(tf.zeros([1, 45, 45, 1])).dataSync();
 }
 
 export async function predict(imageData) {
