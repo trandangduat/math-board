@@ -21,7 +21,12 @@ export class Layer {
         for (let i = 1; i < points.length; i++) {
             this.ctx.lineTo(points[i].x, points[i].y);
         }
-        this.ctx.strokeStyle = brush.color;
+        if (stroke.getIsErased()) {
+            brush.color.setAlpha(0.3);
+        } else {
+            brush.color.setAlpha(1);
+        }
+        this.ctx.strokeStyle = brush.color.getColor();
         this.ctx.lineWidth = brush.radius * 2;
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
@@ -34,25 +39,11 @@ export class Layer {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
     clone (otherLayer) {
-        const compositeOperation = this.ctx.globalCompositeOperation;
-        if (this.ctx.globalCompositeOperation !== "source-over") {
-            this.ctx.globalCompositeOperation = "source-over";
-        }
         this.clear();
         this.ctx.drawImage(otherLayer.canvas, 0, 0);
-        if (compositeOperation !== "source-over") {
-            this.ctx.globalCompositeOperation = compositeOperation;
-        }
     }
     joint (otherLayer) {
-        const compositeOperation = this.ctx.globalCompositeOperation;
-        if (this.ctx.globalCompositeOperation !== "source-over") {
-            this.ctx.globalCompositeOperation = "source-over";
-        }
         this.ctx.drawImage(otherLayer.canvas, 0, 0);
-        if (compositeOperation !== "source-over") {
-            this.ctx.globalCompositeOperation = compositeOperation;
-        }
     }
     getImageData () {
         return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
@@ -60,9 +51,6 @@ export class Layer {
     putImageData (imageData) {
         this.clear();
         this.ctx.putImageData(imageData, 0, 0);
-    }
-    setCompositeOperation (operation) {
-        this.ctx.globalCompositeOperation = operation;
     }
     drawText (text, x, y, font, color) {
         this.ctx.font = font;

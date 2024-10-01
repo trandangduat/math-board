@@ -1,5 +1,7 @@
 import { nanoid } from "nanoid";
 import { BoundingRect } from "./BoundingRect";
+import { checkSegmentsCollision } from "./Geometry";
+import { Color } from "./Color";
 
 export class Action {
     constructor (type) {
@@ -18,9 +20,13 @@ export class Stroke extends Action {
     constructor (points, brush) {
         super('stroke');
         this.points = [...points];
-        this.brush = { ...brush };
+        this.brush = {
+            ...brush,
+            color: (new Color()).copy(brush.color)
+        };
         this.bdrect = new BoundingRect();
         this.points.forEach(p => this.bdrect.update(p.x, p.y, brush.radius));
+        this.isErased = false;
     }
     getPoints () {
         return this.points;
@@ -34,5 +40,34 @@ export class Stroke extends Action {
     addPoint (point) {
         this.points.push(point);
         this.bdrect.update(point.x, point.y, this.brush.radius);
+    }
+    getIsErased () {
+        return this.isErased;
+    }
+    setIsErased (value) {
+        this.isErased = value;
+    }
+    collideWith (line) {
+        for (let i = 1; i < this.points.length; i++) {
+            const p1 = this.points[i - 1];
+            const p2 = this.points[i];
+            if (checkSegmentsCollision([p1, p2], line)) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
+export class Erase extends Action {
+    constructor (strokeActions) {
+        super('erase');
+        this.strokeActions = [...strokeActions];
+    }
+    getStrokeActions () {
+        return this.strokeActions;
+    }
+    addStroke (action) {
+        this.strokeActions.push(action);
     }
 }

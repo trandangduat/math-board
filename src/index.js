@@ -2,7 +2,8 @@ import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
 import { BoundingRect } from "./BoundingRect.js";
-import { Stroke } from "./Action.js";
+import { Erase, Stroke } from "./Action.js";
+import { Color } from "./Color.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -17,6 +18,7 @@ const predictWorker = new Worker(
 let mainBoundingRects = [];
 let boundingRects = [];
 let resultRects = [];
+let prevCursor = null;
 
 let actions = new Stack();
 let removedActions = new Stack();
@@ -26,7 +28,6 @@ const undoButton = document.getElementById("undo");
 const redoButton = document.getElementById("redo");
 const brushSizeSlider = document.getElementById("brush-size");
 const brushColorPicker = document.getElementById("brush-color");
-const eraserSizeSlider = document.getElementById("eraser-size");
 const [brushButton, eraserButton] = [
     document.getElementById("brush-mode"),
     document.getElementById("eraser-mode")
@@ -41,16 +42,8 @@ let drawingState = BEFORE_PAINTING;
 let actionType = MODE_BRUSH;
 
 const brush = {
-    x: 0,
-    y: 0,
     radius: 4,
-    color: "black",
-}
-
-const eraser = {
-    x: 0,
-    y: 0,
-    radius: 2,
+    color: new Color(0, 0, 0, 1),
 }
 
 function clear() {
@@ -96,7 +89,6 @@ function draw() {
             }
 
             case MODE_ERASE: {
-                mainLayer.drawStroke(new Stroke(newPath, eraser));
                 break;
             }
         }
@@ -108,14 +100,14 @@ function draw() {
             mainLayer.drawStroke(stroke);
         }
     }
-    for (let stroke of actions.getStack()) {
-        if (stroke.getType() === "stroke") {
-            const { x, y, w, h } = stroke.getBoundingRect().getRect();
-            boundingRectLayer.ctx.strokeStyle = "blue";
-            boundingRectLayer.ctx.lineWidth = 1;
-            boundingRectLayer.ctx.strokeRect(x, y, w, h);
-        }
-    }
+    // for (let stroke of actions.getStack()) {
+    //     if (stroke.getType() === "stroke") {
+    //         const { x, y, w, h } = stroke.getBoundingRect().getRect();
+    //         boundingRectLayer.ctx.strokeStyle = "blue";
+    //         boundingRectLayer.ctx.lineWidth = 1;
+    //         boundingRectLayer.ctx.strokeRect(x, y, w, h);
+    //     }
+    // }
 
     undoButton.disabled = actions.size < 1;
     redoButton.disabled = removedActions.empty();
@@ -132,6 +124,19 @@ function undo(e) {
 
     const action = actions.pop();
     removedActions.push(action);
+
+    switch (action.getType()) {
+        case "erase": {
+            const deletedStrokes = action.getStrokeActions();
+            console.log(deletedStrokes)
+            for (let stroke of deletedStrokes) {
+                stroke.setIsErased(false);
+                actions.push(stroke);
+            }
+            break;
+        }
+    }
+
     draw();
 }
 
@@ -143,6 +148,18 @@ function redo(e) {
 
     const action = removedActions.pop();
     actions.push(action);
+
+    switch (action.getType()) {
+        case "erase": {
+            const deletedStrokes = action.getStrokeActions();
+            for (let stroke of deletedStrokes) {
+                let i = actions.getStack().indexOf(stroke);
+                actions.get(i).setIsErased(true);
+                actions.remove(i);
+            }
+            break;
+        }
+    }
     draw();
 }
 
@@ -198,22 +215,19 @@ function startDrawing (e) {
             }
 
             case MODE_ERASE: {
-                newPath = [];
-                newPath.push(cursor);
+                actions.push(new Erase([]))
                 break;
             }
         }
         drawingState = DURING_PAINTING;
         draw();
     }
+
+    prevCursor = cursor;
 }
 
 function whileDrawing (e) {
     const cursor = getMousePos(e);
-    brush.x = cursor.x;
-    brush.y = cursor.y;
-    eraser.x = cursor.x;
-    eraser.y = cursor.y;
     mousePosTracker.textContent = `(${cursor.x}, ${cursor.y})`;
 
     if (drawingState == DURING_PAINTING) {
@@ -241,12 +255,21 @@ function whileDrawing (e) {
             }
 
             case MODE_ERASE: {
-                newPath.push(cursor);
+                for (let action of actions.getStack()) {
+                    if (action.getType() === "stroke") {
+                        if (!action.getIsErased() && action.collideWith([prevCursor, cursor])) {
+                            actions.top().addStroke(action);
+                            action.setIsErased(true);
+                        }
+                    }
+                }
                 break;
             }
         }
         draw();
     }
+
+    prevCursor = cursor;
 }
 
 function detectEqualSign() {
@@ -291,12 +314,19 @@ async function finishDrawing (e) {
             }
 
             case MODE_ERASE: {
+                for (let i = actions.size - 1; i >= 0; i--) {
+                    if (actions.get(i).getType() === "stroke" && actions.get(i).getIsErased()) {
+                        actions.remove(i);
+                    }
+                }
                 break;
             }
         }
         drawingState = BEFORE_PAINTING;
         draw();
     }
+
+    prevCursor = null;
 }
 
 (async function main() {
@@ -327,31 +357,23 @@ async function finishDrawing (e) {
         brush.radius = parseInt(e.target.value);
     });
     brushColorPicker.addEventListener("input", (e) => {
-        brush.color = e.target.value;
-    });
-    eraserSizeSlider.addEventListener("input", (e) => {
-        eraser.radius = parseInt(e.target.value);
+        brush.color.setHex(e.target.value);
     });
 
     [brushButton, eraserButton].forEach((button) => {
         button.addEventListener("click", () => {
             [brushButton, eraserButton].forEach((btn) => {
-                const controlGroup = btn.parentElement.querySelector(".control");
                 if (btn !== button) {
                     btn.classList.remove("active");
-                    controlGroup.style.display = "none";
                 } else {
                     btn.classList.remove("active");
-                    controlGroup.style.display = "flex";
                 }
             });
             button.classList.add("active");
             if (button === brushButton) {
                 actionType = MODE_BRUSH;
-                mainLayer.setCompositeOperation("source-over");
             } else if (button === eraserButton) {
                 actionType = MODE_ERASE;
-                mainLayer.setCompositeOperation("destination-out");
             }
         });
     });

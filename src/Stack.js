@@ -23,4 +23,10 @@ export class Stack {
     clear() {
         this.stack = [];
     }
+    get (index) {
+        return this.stack[index];
+    }
+    remove (index) {
+        this.stack.splice(index, 1);
+    }
 }
