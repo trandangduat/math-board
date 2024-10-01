@@ -6,13 +6,10 @@ import { Stroke } from "./Action.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
-const offscreenLayer = new Layer("offscreen");
 const drawingLayer = new Layer("drawing");
 const tempLayer = new Layer("temp");
 const boundingRectLayer = new Layer("bounding-rect");
 const resultLayer = new Layer("result");
-const History = new Stack();
-const DeletedHistory = new Stack();
 const predictWorker = new Worker(
     new URL("./model/worker.js", import.meta.url), {
     type: 'module'
@@ -21,7 +18,8 @@ let mainBoundingRects = [];
 let boundingRects = [];
 let resultRects = [];
 
-let strokeActions = new Stack();
+let actions = new Stack();
+let removedActions = new Stack();
 
 const mousePosTracker = document.getElementById("mouse-pos");
 const undoButton = document.getElementById("undo");
@@ -56,8 +54,9 @@ const eraser = {
 }
 
 function clear() {
-    // uiLayer.clear();
+    mainLayer.clear();
     boundingRectLayer.clear();
+
     if (drawingState === DURING_PAINTING) {
         tempLayer.clear();
     }
@@ -81,7 +80,6 @@ function renderExpressionsResults() {
         // draw text animation
         mainLayer.joint(resultLayer);
         resultLayer.clear();
-        updateHistory();
         res.isRendered = true;
     }
 }
@@ -104,59 +102,48 @@ function draw() {
         }
         newPath = [newPath[newPath.length - 1]];
     }
-    if (drawingState != DURING_PAINTING || actionType != MODE_BRUSH) {
-        for (let stroke of strokeActions.getStack()) {
+
+    for (let stroke of actions.getStack()) {
+        if (stroke.getType() === "stroke") {
             mainLayer.drawStroke(stroke);
         }
     }
-    for (let stroke of strokeActions.getStack()) {
-        const { x, y, w, h } = stroke.getBoundingRect().getRect();
-        boundingRectLayer.ctx.strokeStyle = "blue";
-        boundingRectLayer.ctx.lineWidth = 1;
-        boundingRectLayer.ctx.strokeRect(x, y, w, h);
+    for (let stroke of actions.getStack()) {
+        if (stroke.getType() === "stroke") {
+            const { x, y, w, h } = stroke.getBoundingRect().getRect();
+            boundingRectLayer.ctx.strokeStyle = "blue";
+            boundingRectLayer.ctx.lineWidth = 1;
+            boundingRectLayer.ctx.strokeRect(x, y, w, h);
+        }
     }
+
+    undoButton.disabled = actions.size < 1;
+    redoButton.disabled = removedActions.empty();
+
     // Draw result next to matching main bounding box
     renderExpressionsResults();
 }
 
-function undo(event) {
-    event.preventDefault()
-    if (History.size <= 1) {
+function undo(e) {
+    e.preventDefault();
+    if (actions.empty()) {
         return;
     }
-    DeletedHistory.push(History.pop());
-    offscreenLayer.putImageData(History.top());
-    mainLayer.clone(offscreenLayer);
-    if (History.size <= 1) {
-        undoButton.disabled = true;
-    }
-    if (!DeletedHistory.empty()) {
-        redoButton.disabled = false;
-    }
+
+    const action = actions.pop();
+    removedActions.push(action);
+    draw();
 }
 
-function redo(event) {
-    event.preventDefault()
-    if (DeletedHistory.empty()) {
+function redo(e) {
+    e.preventDefault();
+    if (removedActions.empty()) {
         return;
     }
-    History.push(DeletedHistory.pop());
-    offscreenLayer.putImageData(History.top());
-    mainLayer.clone(offscreenLayer);
-    if (DeletedHistory.empty()) {
-        redoButton.disabled = true;
-    }
-    if (History.size > 1) {
-        undoButton.disabled = false;
-    }
-}
 
-function updateHistory() {
-    offscreenLayer.clone(mainLayer);
-    History.push(mainLayer.getImageData());
-    DeletedHistory.clear();
-    redoButton.disabled = true;
-    undoButton.disabled = false;
+    const action = removedActions.pop();
+    actions.push(action);
+    draw();
 }
 
 async function capture (bdRect) {
@@ -199,10 +186,14 @@ function startDrawing (e) {
                 tempPath = [];
                 newPath = [];
                 clearBuffer();
+
                 boundingRects.push(new BoundingRect());
                 newPath.push(cursor);
                 addToBuffer(cursor);
-                strokeActions.push(new Stroke([cursor], brush));
+
+                actions.push(new Stroke([cursor], brush));
+                removedActions.clear();
+
                 break;
             }
 
@@ -234,7 +225,7 @@ function whileDrawing (e) {
                 if (nextPoints.length > 0) {
                     // save one stable smoothed point
                     newPath.push(nextPoints[0]);
-                    strokeActions.top().addPoint(nextPoints[0]);
+                    actions.top().addPoint(nextPoints[0]);
 
                     // save the rest of average points between the stable point to the cursor
                     tempPath = [];
@@ -285,7 +276,6 @@ async function finishDrawing (e) {
                 tempPath = [];
                 drawingLayer.clear();
                 tempLayer.clear();
-                updateHistory();
 
                 const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
                 if (bestBox.index === -1) {
@@ -301,7 +291,6 @@ async function finishDrawing (e) {
             }
 
             case MODE_ERASE: {
-                updateHistory();
                 break;
             }
         }
@@ -330,8 +319,6 @@ async function finishDrawing (e) {
     uiLayer.canvas.addEventListener("mousemove", whileDrawing);
     uiLayer.canvas.addEventListener("mouseup", finishDrawing);
     uiLayer.canvas.addEventListener("mouseout", finishDrawing);
-
-    History.push(offscreenLayer.getImageData());
 
     undoButton.addEventListener("click", undo);
     redoButton.addEventListener("click", redo);
