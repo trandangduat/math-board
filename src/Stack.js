@@ -2,6 +2,9 @@ export class Stack {
     constructor() {
         this.stack = [];
     }
+    getStack() {
+        return this.stack;
+    }
     push(item) {
         this.stack.push(item);
     }

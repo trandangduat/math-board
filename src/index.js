@@ -2,6 +2,7 @@ import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
 import { BoundingRect } from "./BoundingRect.js";
+import { Stroke } from "./Action.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -20,6 +21,8 @@ let mainBoundingRects = [];
 let boundingRects = [];
 let resultRects = [];
 
+let strokeActions = new Stack();
+
 const mousePosTracker = document.getElementById("mouse-pos");
 const undoButton = document.getElementById("undo");
 const redoButton = document.getElementById("redo");
@@ -34,6 +37,11 @@ const [brushButton, eraserButton] = [
 const [BEFORE_PAINTING, DURING_PAINTING, DONE_PAINTING] = [0, 1, 2];
 const [MODE_BRUSH, MODE_ERASE] = [0, 1];
 
+let tempPath = [];
+let newPath = [];
+let drawingState = BEFORE_PAINTING;
+let actionType = MODE_BRUSH;
+
 const brush = {
     x: 0,
     y: 0,
@@ -46,11 +54,6 @@ const eraser = {
     y: 0,
     radius: 2,
 }
-
-let tempPath = [];
-let newPath = [];
-let drawingState = BEFORE_PAINTING;
-let actionType = MODE_BRUSH;
 
 function clear() {
     // uiLayer.clear();
@@ -89,33 +92,31 @@ function draw() {
     if (drawingState == DURING_PAINTING) {
         switch (actionType) {
             case MODE_BRUSH: {
-                drawingLayer.drawStroke(newPath, brush);
-                tempLayer.drawStroke(tempPath, brush);
+                drawingLayer.drawStroke(new Stroke(newPath, brush));
+                tempLayer.drawStroke(new Stroke(tempPath, brush));
                 break;
             }
 
             case MODE_ERASE: {
-                mainLayer.drawStroke(newPath, eraser);
+                mainLayer.drawStroke(new Stroke(newPath, eraser));
                 break;
             }
         }
         newPath = [newPath[newPath.length - 1]];
     }
-    // Drawing bounding boxes (for debugging)
-    // for (let bdx of boundingRects) {
-    //     const rect = bdx.getRect();
-    //     boundingRectLayer.ctx.strokeStyle = "green";
-    //     boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
-    // }
-    for (let bdx of mainBoundingRects) {
-        const rect = bdx.getRect();
+    if (drawingState != DURING_PAINTING || actionType != MODE_BRUSH) {
+        for (let stroke of strokeActions.getStack()) {
+            mainLayer.drawStroke(stroke);
+        }
+    }
+    for (let stroke of strokeActions.getStack()) {
+        const { x, y, w, h } = stroke.getBoundingRect().getRect();
         boundingRectLayer.ctx.strokeStyle = "blue";
-        boundingRectLayer.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+        boundingRectLayer.ctx.lineWidth = 1;
+        boundingRectLayer.ctx.strokeRect(x, y, w, h);
     }
     // Draw result next to matching main bounding box
     renderExpressionsResults();
-
-    // requestAnimationFrame(draw);
 }
 
 function undo(event) {
@@ -201,6 +202,7 @@ function startDrawing (e) {
                 boundingRects.push(new BoundingRect());
                 newPath.push(cursor);
                 addToBuffer(cursor);
+                strokeActions.push(new Stroke([cursor], brush));
                 break;
             }
 
@@ -210,8 +212,8 @@ function startDrawing (e) {
                 break;
             }
         }
-        draw();
         drawingState = DURING_PAINTING;
+        draw();
     }
 }
 
@@ -232,6 +234,8 @@ function whileDrawing (e) {
                 if (nextPoints.length > 0) {
                     // save one stable smoothed point
                     newPath.push(nextPoints[0]);
+                    strokeActions.top().addPoint(nextPoints[0]);
+
                     // save the rest of average points between the stable point to the cursor
                     tempPath = [];
                     for (let i = 1; i < nextPoints.length; i++) {
@@ -272,12 +276,13 @@ function detectEqualSign() {
 }
 
 async function finishDrawing (e) {
-
     if (drawingState === DURING_PAINTING) {
         switch (actionType) {
             case MODE_BRUSH: {
-                mainLayer.joint(drawingLayer);
-                mainLayer.joint(tempLayer);
+                // mainLayer.joint(drawingLayer);
+                // mainLayer.joint(tempLayer);
+                newPath = [];
+                tempPath = [];
                 drawingLayer.clear();
                 tempLayer.clear();
                 updateHistory();
@@ -300,15 +305,15 @@ async function finishDrawing (e) {
                 break;
             }
         }
-        draw();
         drawingState = BEFORE_PAINTING;
+        draw();
     }
 }
 
 (async function main() {
-    predictWorker.postMessage({
-        message: "LOAD",
-    });
+    // predictWorker.postMessage({
+    //     message: "LOAD",
+    // });
     predictWorker.onmessage = (e) => {
         console.log(e.data);
         predictWorker.onmessage = null;

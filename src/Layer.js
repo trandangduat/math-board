@@ -7,20 +7,25 @@ export class Layer {
         this.canvas.height = innerHeight;
         this.ctx = this.canvas.getContext("2d", { willReadFrequently: true });
     }
-    drawLine (start, end, brush) {
+    drawStroke (stroke) {
+        const points = stroke.getPoints();
+        const brush = stroke.getBrush();
+        if (points.length < 1) {
+            return;
+        }
         this.ctx.beginPath();
-        this.ctx.moveTo(start.x, start.y);
-        this.ctx.lineTo(end.x, end.y);
+        this.ctx.moveTo(points[0].x, points[0].y);
+        if (points.length === 1) {
+            this.ctx.lineTo(points[0].x, points[0].y);
+        }
+        for (let i = 1; i < points.length; i++) {
+            this.ctx.lineTo(points[i].x, points[i].y);
+        }
         this.ctx.strokeStyle = brush.color;
         this.ctx.lineWidth = brush.radius * 2;
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
         this.ctx.stroke();
-    }
-    drawStroke (path, brush) {
-        for (let i = 1; i < path.length; i++) {
-            this.drawLine(path[i - 1], path[i], brush);
-        }
     }
     rect () {
         return this.canvas.getBoundingClientRect();
