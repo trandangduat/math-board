@@ -22,7 +22,7 @@ export class Layer {
             this.ctx.lineTo(points[i].x, points[i].y);
         }
         if (stroke.getIsErased()) {
-            brush.color.setAlpha(0.3);
+            brush.color.setAlpha(0.4);
         } else {
             brush.color.setAlpha(1);
         }
@@ -44,13 +44,6 @@ export class Layer {
     }
     joint (otherLayer) {
         this.ctx.drawImage(otherLayer.canvas, 0, 0);
-    }
-    getImageData () {
-        return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-    }
-    putImageData (imageData) {
-        this.clear();
-        this.ctx.putImageData(imageData, 0, 0);
     }
     drawText (text, x, y, font, color) {
         this.ctx.font = font;

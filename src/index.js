@@ -1,13 +1,12 @@
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
-import { addToBuffer, clearBuffer, createStroke, getNextPoints } from "./LineAlgorithms.js";
+import { addToBuffer, clearBuffer, getNextPoints } from "./LineAlgorithms.js";
 import { BoundingRect } from "./BoundingRect.js";
 import { Erase, Stroke } from "./Action.js";
 import { Color } from "./Color.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
-const drawingLayer = new Layer("drawing");
 const tempLayer = new Layer("temp");
 const boundingRectLayer = new Layer("bounding-rect");
 const resultLayer = new Layer("result");
@@ -37,7 +36,6 @@ const [BEFORE_PAINTING, DURING_PAINTING, DONE_PAINTING] = [0, 1, 2];
 const [MODE_BRUSH, MODE_ERASE] = [0, 1];
 
 let tempPath = [];
-let newPath = [];
 let drawingState = BEFORE_PAINTING;
 let actionType = MODE_BRUSH;
 
@@ -48,7 +46,6 @@ const brush = {
 
 function clear() {
     mainLayer.clear();
-    boundingRectLayer.clear();
 
     if (drawingState === DURING_PAINTING) {
         tempLayer.clear();
@@ -83,7 +80,6 @@ function draw() {
     if (drawingState == DURING_PAINTING) {
         switch (actionType) {
             case MODE_BRUSH: {
-                drawingLayer.drawStroke(new Stroke(newPath, brush));
                 tempLayer.drawStroke(new Stroke(tempPath, brush));
                 break;
             }
@@ -92,7 +88,6 @@ function draw() {
                 break;
             }
         }
-        newPath = [newPath[newPath.length - 1]];
     }
 
     for (let stroke of actions.getStack()) {
@@ -121,7 +116,6 @@ function undo(e) {
     if (actions.empty()) {
         return;
     }
-    console.log("Before undo: ", [...actions.getStack()]);
 
     const action = actions.pop();
     removedActions.push(action);
@@ -137,8 +131,6 @@ function undo(e) {
             break;
         }
     }
-
-    console.log("After undo: ", [...actions.getStack()]);
 
     draw();
 }
@@ -163,12 +155,12 @@ function redo(e) {
                         break;
                     }
                 }
-
                 if (i !== -1) {
                     actions.get(i).setIsErased(true);
                     actions.remove(i);
                 }
             }
+
             break;
         }
     }
@@ -213,11 +205,9 @@ function startDrawing (e) {
         switch (actionType) {
             case MODE_BRUSH: {
                 tempPath = [];
-                newPath = [];
                 clearBuffer();
 
                 boundingRects.push(new BoundingRect());
-                newPath.push(cursor);
                 addToBuffer(cursor);
 
                 actions.push(new Stroke([cursor], brush));
@@ -249,22 +239,13 @@ function whileDrawing (e) {
 
             case MODE_BRUSH: {
                 addToBuffer(cursor);
+
                 const nextPoints = getNextPoints();
                 if (nextPoints.length > 0) {
-                    // save one stable smoothed point
-                    newPath.push(nextPoints[0]);
                     actions.top().addPoint(nextPoints[0]);
+                    tempPath = [...nextPoints];
+                }
 
-                    // save the rest of average points between the stable point to the cursor
-                    tempPath = [];
-                    for (let i = 1; i < nextPoints.length; i++) {
-                        tempPath.push(nextPoints[i]);
-                    }
-                }
-                if (newPath.length > 0) {
-                    const lastPoint = newPath[newPath.length - 1];
-                    boundingRects[boundingRects.length - 1].update(lastPoint.x, lastPoint.y, brush.radius);
-                }
                 break;
             }
 
@@ -305,13 +286,11 @@ function detectEqualSign() {
 
 async function finishDrawing (e) {
     if (drawingState === DURING_PAINTING) {
+
         switch (actionType) {
+
             case MODE_BRUSH: {
-                // mainLayer.joint(drawingLayer);
-                // mainLayer.joint(tempLayer);
-                newPath = [];
                 tempPath = [];
-                drawingLayer.clear();
                 tempLayer.clear();
 
                 const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
@@ -334,7 +313,6 @@ async function finishDrawing (e) {
                         actions.remove(i);
                     }
                 }
-                console.log("After erase: ", [...actions.getStack()]);
                 break;
             }
         }
@@ -356,7 +334,6 @@ async function finishDrawing (e) {
 
     document.body.appendChild(mainLayer.canvas);
     document.body.appendChild(boundingRectLayer.canvas);
-    document.body.appendChild(drawingLayer.canvas);
     document.body.appendChild(tempLayer.canvas);
     // document.body.appendChild(resultLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
