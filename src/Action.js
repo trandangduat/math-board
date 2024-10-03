@@ -26,6 +26,7 @@ export class Stroke extends Action {
         this.bdrect = new BoundingRect();
         this.points.forEach(p => this.bdrect.update(p.x, p.y, brush.radius));
         this.isErased = false;
+        this.isSelected = false;
     }
     getPoints () {
         return this.points;
@@ -45,6 +46,12 @@ export class Stroke extends Action {
     }
     setIsErased (value) {
         this.isErased = value;
+    }
+    getIsSelected () {
+        return this.isSelected;
+    }
+    setIsSelected (value) {
+        this.isSelected = value;
     }
     collideWith (line) {
         for (let i = 1; i < this.points.length; i++) {

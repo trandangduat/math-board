@@ -31,6 +31,12 @@ export class BoundingRect {
         this.max_x = Math.max(this.max_x, other.max_x);
         this.max_y = Math.max(this.max_y, other.max_y);
     }
+    cover (point) {
+        return point.x >= this.min_x
+            && point.x <= this.max_x
+            && point.y >= this.min_y
+            && point.y <= this.max_y;
+    }
     /**
      * Find the best nearby bounding box to join with
      * @param {Array} boundingBoxes - array of bounding boxes

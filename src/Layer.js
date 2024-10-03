@@ -1,3 +1,5 @@
+import { Color } from "./Color";
+
 export class Layer {
     constructor (id) {
         this.id = id;
@@ -43,6 +45,16 @@ export class Layer {
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
         this.ctx.stroke();
+    }
+    drawBoundingBox (action, color = new Color(49, 130, 237)) {
+        if (!action.getIsSelected()) {
+            return;
+        }
+
+        const rect = action.getBoundingRect().getRect();
+        this.ctx.strokeStyle = color.getColor();
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
     }
     rect () {
         return this.canvas.getBoundingClientRect();

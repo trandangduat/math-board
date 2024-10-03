@@ -18,6 +18,7 @@ let mainBoundingRects = [];
 let boundingRects = [];
 let resultRects = [];
 let prevCursor = null;
+let prevSelectedAction = null;
 
 let actions = new Stack();
 let removedActions = new Stack();
@@ -27,13 +28,14 @@ const undoButton = document.getElementById("undo");
 const redoButton = document.getElementById("redo");
 const brushSizeSlider = document.getElementById("brush-size");
 const brushColorPicker = document.getElementById("brush-color");
-const [brushButton, eraserButton] = [
+const [brushButton, eraserButton, selectButton] = [
     document.getElementById("brush-mode"),
-    document.getElementById("eraser-mode")
+    document.getElementById("eraser-mode"),
+    document.getElementById("select-mode")
 ];
 
 const [BEFORE_PAINTING, DURING_PAINTING, DONE_PAINTING] = [0, 1, 2];
-const [MODE_BRUSH, MODE_ERASE] = [0, 1];
+const [MODE_BRUSH, MODE_ERASE, MODE_SELECT] = [0, 1, 2];
 
 let tempPath = [];
 let drawingState = BEFORE_PAINTING;
@@ -93,16 +95,11 @@ function draw() {
     for (let stroke of actions.getStack()) {
         if (stroke.getType() === "stroke") {
             mainLayer.drawStroke(stroke);
+            if (stroke.getIsSelected()) {
+                mainLayer.drawBoundingBox(stroke);
+            }
         }
     }
-    // for (let stroke of actions.getStack()) {
-    //     if (stroke.getType() === "stroke") {
-    //         const { x, y, w, h } = stroke.getBoundingRect().getRect();
-    //         boundingRectLayer.ctx.strokeStyle = "blue";
-    //         boundingRectLayer.ctx.lineWidth = 1;
-    //         boundingRectLayer.ctx.strokeRect(x, y, w, h);
-    //     }
-    // }
 
     undoButton.disabled = actions.size < 1;
     redoButton.disabled = removedActions.empty();
@@ -220,6 +217,20 @@ function startDrawing (e) {
                 actions.push(new Erase([]))
                 removedActions.clear();
 
+                break;
+            }
+
+            case MODE_SELECT: {
+                if (prevSelectedAction && prevSelectedAction.getIsSelected()) {
+                    prevSelectedAction.setIsSelected(false);
+                }
+                for (let action of actions.getStack()) {
+                    if (action.getType() === "stroke" && action.getBoundingRect().cover(cursor)) {
+                        action.setIsSelected(true);
+                        prevSelectedAction = action;
+                        break;
+                    }
+                }
                 break;
             }
         }
@@ -353,9 +364,9 @@ async function finishDrawing (e) {
         brush.color.setHex(e.target.value);
     });
 
-    [brushButton, eraserButton].forEach((button) => {
+    [brushButton, eraserButton, selectButton].forEach((button) => {
         button.addEventListener("click", () => {
-            [brushButton, eraserButton].forEach((btn) => {
+            [brushButton, eraserButton, selectButton].forEach((btn) => {
                 if (btn !== button) {
                     btn.classList.remove("active");
                 } else {
@@ -367,6 +378,15 @@ async function finishDrawing (e) {
                 actionType = MODE_BRUSH;
             } else if (button === eraserButton) {
                 actionType = MODE_ERASE;
+            } else if (button === selectButton) {
+                actionType = MODE_SELECT;
+            }
+
+            if (button !== selectButton) {
+                if (prevSelectedAction && prevSelectedAction.getIsSelected()) {
+                    prevSelectedAction.setIsSelected(false);
+                    draw();
+                }
             }
         });
     });
