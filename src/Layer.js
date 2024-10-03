@@ -13,14 +13,26 @@ export class Layer {
         if (points.length < 1) {
             return;
         }
+
         this.ctx.beginPath();
         this.ctx.moveTo(points[0].x, points[0].y);
+
+        for (let i = 0; i < points.length - 1; i++) {
+            // this.ctx.lineTo(points[i].x, points[i].y);
+            const xc = (points[i].x + points[i + 1].x) / 2
+            const yc = (points[i].y + points[i + 1].y) / 2
+            this.ctx.quadraticCurveTo(points[i].x, points[i].y, xc, yc)
+        }
+
         if (points.length === 1) {
             this.ctx.lineTo(points[0].x, points[0].y);
         }
-        for (let i = 1; i < points.length; i++) {
-            this.ctx.lineTo(points[i].x, points[i].y);
+
+        if (points.length > 2) {
+            const last = points.length - 1;
+            this.ctx.quadraticCurveTo(points[last - 1].x, points[last - 1].y, points[last].x, points[last].y)
         }
+
         if (stroke.getIsErased()) {
             brush.color.setAlpha(0.4);
         } else {
