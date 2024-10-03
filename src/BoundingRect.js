@@ -1,5 +1,3 @@
-import { nanoid } from "nanoid";
-
 export class BoundingRect {
     static MAX_SIZE = 99999;
     constructor() {
@@ -7,7 +5,7 @@ export class BoundingRect {
         this.min_y = BoundingRect.MAX_SIZE;
         this.max_x = 0;
         this.max_y = 0;
-        this.id = nanoid();
+        this.id = Date.now();
     }
     reset() {
         this.min_x = this.min_y = BoundingRect.MAX_SIZE;

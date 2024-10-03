@@ -1,4 +1,3 @@
-import { nanoid } from "nanoid";
 import { BoundingRect } from "./BoundingRect";
 import { checkSegmentsCollision } from "./Geometry";
 import { Color } from "./Color";
@@ -6,7 +5,7 @@ import { Color } from "./Color";
 export class Action {
     constructor (type) {
         this.type = type;
-        this.id = nanoid();
+        this.id = Date.now();
     }
     getType () {
         return this.type;

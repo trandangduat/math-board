@@ -5,8 +5,8 @@ export class Stack {
     getStack() {
         return this.stack;
     }
-    push(item) {
-        this.stack.push(item);
+    push(...items) {
+        this.stack.push(...items);
     }
     pop() {
         return this.stack.pop();
@@ -28,5 +28,8 @@ export class Stack {
     }
     remove (index) {
         this.stack.splice(index, 1);
+    }
+    sort (cmp) {
+        this.stack.sort(cmp);
     }
 }

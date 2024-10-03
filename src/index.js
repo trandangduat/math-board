@@ -121,6 +121,7 @@ function undo(e) {
     if (actions.empty()) {
         return;
     }
+    console.log("Before undo: ", [...actions.getStack()]);
 
     const action = actions.pop();
     removedActions.push(action);
@@ -128,14 +129,16 @@ function undo(e) {
     switch (action.getType()) {
         case "erase": {
             const deletedStrokes = action.getStrokeActions();
-            console.log(deletedStrokes)
             for (let stroke of deletedStrokes) {
                 stroke.setIsErased(false);
-                actions.push(stroke);
             }
+            actions.push(...deletedStrokes);
+            actions.sort((a, b) => a.getId() - b.getId());
             break;
         }
     }
+
+    console.log("After undo: ", [...actions.getStack()]);
 
     draw();
 }
@@ -153,9 +156,18 @@ function redo(e) {
         case "erase": {
             const deletedStrokes = action.getStrokeActions();
             for (let stroke of deletedStrokes) {
-                let i = actions.getStack().indexOf(stroke);
-                actions.get(i).setIsErased(true);
-                actions.remove(i);
+                let i = -1;
+                for (let j = 0; j < actions.size; j++) {
+                    if (actions.get(j).getId() === stroke.getId()) {
+                        i = j;
+                        break;
+                    }
+                }
+
+                if (i !== -1) {
+                    actions.get(i).setIsErased(true);
+                    actions.remove(i);
+                }
             }
             break;
         }
@@ -216,6 +228,8 @@ function startDrawing (e) {
 
             case MODE_ERASE: {
                 actions.push(new Erase([]))
+                removedActions.clear();
+
                 break;
             }
         }
@@ -315,10 +329,12 @@ async function finishDrawing (e) {
 
             case MODE_ERASE: {
                 for (let i = actions.size - 1; i >= 0; i--) {
-                    if (actions.get(i).getType() === "stroke" && actions.get(i).getIsErased()) {
+                    let action = actions.get(i);
+                    if (action.getType() === "stroke" && action.getIsErased()) {
                         actions.remove(i);
                     }
                 }
+                console.log("After erase: ", [...actions.getStack()]);
                 break;
             }
         }
