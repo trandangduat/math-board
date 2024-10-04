@@ -1,3 +1,5 @@
+import { Color } from "./Color";
+
 export class BoundingRect {
     static MAX_SIZE = 99999;
     constructor() {
@@ -37,6 +39,12 @@ export class BoundingRect {
             && point.y >= this.min_y
             && point.y <= this.max_y;
     }
+    intersect (other) {
+        return this.min_x <= other.max_x
+            && this.max_x >= other.min_x
+            && this.min_y <= other.max_y
+            && this.max_y >= other.min_y;
+    }
     /**
      * Find the best nearby bounding box to join with
      * @param {Array} boundingBoxes - array of bounding boxes
@@ -71,5 +79,29 @@ export class BoundingRect {
             }
         }
         return bestBox;
+    }
+}
+
+export class SelectionRect extends BoundingRect {
+    constructor() {
+        super();
+        this.render = false;
+        this.color = new Color(49, 130, 237);
+    }
+    setOrigin (x, y) {
+        this.min_x = x;
+        this.min_y = y;
+        this.max_x = x;
+        this.max_y = y;
+    }
+    update (x, y) {
+        this.max_x = x;
+        this.max_y = y;
+    }
+    getRender() {
+        return this.render;
+    }
+    setRender(value) {
+        this.render = value;
     }
 }

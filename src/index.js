@@ -1,7 +1,7 @@
 import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, getNextPoints } from "./LineAlgorithms.js";
-import { BoundingRect } from "./BoundingRect.js";
+import { BoundingRect, SelectionRect } from "./BoundingRect.js";
 import { Erase, Stroke } from "./Action.js";
 import { Color } from "./Color.js";
 
@@ -19,6 +19,7 @@ let boundingRects = [];
 let resultRects = [];
 let prevCursor = null;
 let prevSelectedAction = null;
+let selectRect = new SelectionRect();
 
 let actions = new Stack();
 let removedActions = new Stack();
@@ -51,6 +52,9 @@ function clear() {
 
     if (drawingState === DURING_PAINTING) {
         tempLayer.clear();
+    }
+    if (actionType === MODE_SELECT) {
+        uiLayer.clear();
     }
 }
 
@@ -89,6 +93,13 @@ function draw() {
             case MODE_ERASE: {
                 break;
             }
+
+            case MODE_SELECT: {
+                if (selectRect.getRender()) {
+                    uiLayer.drawSelectionRect(selectRect);
+                }
+                break;
+            }
         }
     }
 
@@ -96,7 +107,7 @@ function draw() {
         if (stroke.getType() === "stroke") {
             mainLayer.drawStroke(stroke);
             if (stroke.getIsSelected()) {
-                mainLayer.drawBoundingBox(stroke);
+                mainLayer.drawBoundingRect(stroke);
             }
         }
     }
@@ -221,6 +232,9 @@ function startDrawing (e) {
             }
 
             case MODE_SELECT: {
+                selectRect.setRender(true);
+                selectRect.setOrigin(cursor.x, cursor.y);
+
                 if (prevSelectedAction && prevSelectedAction.getIsSelected()) {
                     prevSelectedAction.setIsSelected(false);
                 }
@@ -268,6 +282,13 @@ function whileDrawing (e) {
                             action.setIsErased(true);
                         }
                     }
+                }
+                break;
+            }
+
+            case MODE_SELECT: {
+                if (selectRect.getRender()) {
+                    selectRect.update(cursor.x, cursor.y);
                 }
                 break;
             }
@@ -323,6 +344,13 @@ async function finishDrawing (e) {
                     if (action.getType() === "stroke" && action.getIsErased()) {
                         actions.remove(i);
                     }
+                }
+                break;
+            }
+
+            case MODE_SELECT: {
+                if (selectRect.getRender()) {
+                    selectRect.setRender(false);
                 }
                 break;
             }

@@ -20,8 +20,12 @@ export class Color {
     }
     setAlpha (value) {
         this.a = value;
+        return this;
     }
     getColor () {
+        if (this.a === 1) {
+            return `rgb(${this.r},${this.g},${this.b})`;
+        }
         return `rgba(${this.r},${this.g},${this.b},${this.a})`;
     }
 }

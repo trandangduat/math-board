@@ -46,7 +46,15 @@ export class Layer {
         this.ctx.lineJoin = 'round';
         this.ctx.stroke();
     }
-    drawBoundingBox (action, color = new Color(49, 130, 237)) {
+    drawSelectionRect (rect) {
+        const r = rect.getRect();
+        this.ctx.strokeStyle = rect.color.setAlpha(1).getColor();
+        this.ctx.lineWidth = 1;
+        this.ctx.strokeRect(r.x, r.y, r.w, r.h);
+        this.ctx.fillStyle = rect.color.setAlpha(0.2).getColor();
+        this.ctx.fillRect(r.x, r.y, r.w, r.h);
+    }
+    drawBoundingRect (action, color = new Color(49, 130, 237)) {
         if (!action.getIsSelected()) {
             return;
         }
