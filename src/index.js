@@ -7,8 +7,6 @@ import { Color } from "./Color.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
-const tempLayer = new Layer("temp");
-const boundingRectLayer = new Layer("bounding-rect");
 const resultLayer = new Layer("result");
 const predictWorker = new Worker(
     new URL("./model/worker.js", import.meta.url), {
@@ -50,9 +48,6 @@ const brush = {
 function clear() {
     mainLayer.clear();
 
-    if (drawingState === DURING_PAINTING) {
-        tempLayer.clear();
-    }
     if (actionType === MODE_SELECT) {
         uiLayer.clear();
     }
@@ -86,7 +81,7 @@ function draw() {
     if (drawingState == DURING_PAINTING) {
         switch (actionType) {
             case MODE_BRUSH: {
-                tempLayer.drawStroke(new Stroke(tempPath, brush));
+                mainLayer.drawStroke(new Stroke(tempPath, brush));
                 break;
             }
 
@@ -366,7 +361,6 @@ async function finishDrawing (e) {
 
             case MODE_BRUSH: {
                 tempPath = [];
-                tempLayer.clear();
 
                 const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
                 if (bestBox.index === -1) {
@@ -421,9 +415,6 @@ async function finishDrawing (e) {
     };
 
     document.body.appendChild(mainLayer.canvas);
-    document.body.appendChild(boundingRectLayer.canvas);
-    document.body.appendChild(tempLayer.canvas);
-    // document.body.appendChild(resultLayer.canvas);
     document.body.appendChild(uiLayer.canvas);
 
     uiLayer.canvas.addEventListener("mousedown", startDrawing);
