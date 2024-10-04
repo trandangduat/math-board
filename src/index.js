@@ -18,7 +18,7 @@ let mainBoundingRects = [];
 let boundingRects = [];
 let resultRects = [];
 let prevCursor = null;
-let prevSelectedAction = null;
+let selectedActions = [];
 let selectRect = new SelectionRect();
 
 let actions = new Stack();
@@ -235,13 +235,14 @@ function startDrawing (e) {
                 selectRect.setRender(true);
                 selectRect.setOrigin(cursor.x, cursor.y);
 
-                if (prevSelectedAction && prevSelectedAction.getIsSelected()) {
-                    prevSelectedAction.setIsSelected(false);
+                while (selectedActions.length > 0) {
+                    selectedActions.pop().setIsSelected(false);
                 }
+
                 for (let action of actions.getStack()) {
                     if (action.getType() === "stroke" && action.getBoundingRect().cover(cursor)) {
                         action.setIsSelected(true);
-                        prevSelectedAction = action;
+                        selectedActions.push(action);
                         break;
                     }
                 }
@@ -289,6 +290,23 @@ function whileDrawing (e) {
             case MODE_SELECT: {
                 if (selectRect.getRender()) {
                     selectRect.update(cursor.x, cursor.y);
+
+                    selectedActions = [];
+                    for (let action of actions.getStack()) {
+
+                        if (action.getType() === "stroke") {
+
+                            if (selectRect.intersect(action.getBoundingRect())) {
+                                if (!action.getIsSelected()) {
+                                    action.setIsSelected(true);
+                                    selectedActions.push(action);
+                                }
+                            } else if (action.getIsSelected()) {
+                                action.setIsSelected(false);
+                            }
+
+                        }
+                    }
                 }
                 break;
             }
@@ -352,6 +370,7 @@ async function finishDrawing (e) {
                 if (selectRect.getRender()) {
                     selectRect.setRender(false);
                 }
+
                 break;
             }
         }
@@ -411,10 +430,6 @@ async function finishDrawing (e) {
             }
 
             if (button !== selectButton) {
-                if (prevSelectedAction && prevSelectedAction.getIsSelected()) {
-                    prevSelectedAction.setIsSelected(false);
-                    draw();
-                }
             }
         });
     });

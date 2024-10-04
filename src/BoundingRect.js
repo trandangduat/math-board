@@ -87,16 +87,21 @@ export class SelectionRect extends BoundingRect {
         super();
         this.render = false;
         this.color = new Color(49, 130, 237);
+        this.origin = {
+            x: 0,
+            y: 0
+        }
     }
     setOrigin (x, y) {
-        this.min_x = x;
-        this.min_y = y;
-        this.max_x = x;
-        this.max_y = y;
+        this.origin.x = x;
+        this.origin.y = y;
+        this.update(x, y);
     }
     update (x, y) {
-        this.max_x = x;
-        this.max_y = y;
+        this.min_x = Math.min(x, this.origin.x);
+        this.max_x = Math.max(x, this.origin.x);
+        this.min_y = Math.min(y, this.origin.y);
+        this.max_y = Math.max(y, this.origin.y);
     }
     getRender() {
         return this.render;
