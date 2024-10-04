@@ -36,7 +36,7 @@ const [brushButton, eraserButton, selectButton] = [
 ];
 
 const [BEFORE_PAINTING, DURING_PAINTING, DONE_PAINTING] = [0, 1, 2];
-const [MODE_BRUSH, MODE_ERASE, MODE_SELECT] = [0, 1, 2];
+const [MODE_BRUSH, MODE_ERASE, MODE_SELECT, MODE_TRANSLATE] = [0, 1, 2, 3];
 
 let tempPath = [];
 let drawingState = BEFORE_PAINTING;
@@ -232,6 +232,19 @@ function startDrawing (e) {
             }
 
             case MODE_SELECT: {
+                if (selectedActions.length > 0) {
+                    for (let action of selectedActions) {
+                        if (action.getBoundingRect().cover(cursor)) {
+                            actionType = MODE_TRANSLATE;
+                            break;
+                        }
+                    }
+                }
+
+                if (actionType !== MODE_SELECT) {
+                    break;
+                }
+
                 selectRect.setRender(true);
                 selectRect.setOrigin(cursor.x, cursor.y);
 
@@ -243,6 +256,9 @@ function startDrawing (e) {
                     if (action.getType() === "stroke" && action.getBoundingRect().cover(cursor)) {
                         action.setIsSelected(true);
                         selectedActions.push(action);
+
+                        actionType = MODE_TRANSLATE;
+                        selectRect.setRender(false);
                         break;
                     }
                 }
@@ -297,9 +313,9 @@ function whileDrawing (e) {
                         if (action.getType() === "stroke") {
 
                             if (selectRect.intersect(action.getBoundingRect())) {
+                                selectedActions.push(action);
                                 if (!action.getIsSelected()) {
                                     action.setIsSelected(true);
-                                    selectedActions.push(action);
                                 }
                             } else if (action.getIsSelected()) {
                                 action.setIsSelected(false);
@@ -307,6 +323,15 @@ function whileDrawing (e) {
 
                         }
                     }
+                }
+                break;
+            }
+
+            case MODE_TRANSLATE: {
+                let dx = cursor.x - prevCursor.x;
+                let dy = cursor.y - prevCursor.y;
+                for (let action of selectedActions) {
+                    action.updateTranslate(dx, dy);
                 }
                 break;
             }
@@ -371,6 +396,11 @@ async function finishDrawing (e) {
                     selectRect.setRender(false);
                 }
 
+                break;
+            }
+
+            case MODE_TRANSLATE: {
+                actionType = MODE_SELECT;
                 break;
             }
         }

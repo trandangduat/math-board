@@ -27,6 +27,10 @@ export class Stroke extends Action {
         this.points.forEach(p => this.bdrect.update(p.x, p.y, brush.radius));
         this.isErased = false;
         this.isSelected = false;
+        this.transform = {
+            x: 0,
+            y: 0,
+        };
     }
     getPoints () {
         return this.points;
@@ -53,10 +57,24 @@ export class Stroke extends Action {
     setIsSelected (value) {
         this.isSelected = value;
     }
+    getTransform() {
+        return this.transform;
+    }
+    updateTranslate (dx, dy) {
+        this.transform.x += dx;
+        this.transform.y += dy;
+        this.bdrect.updateTranslate(dx, dy);
+    }
     collideWith (line) {
         for (let i = 1; i < this.points.length; i++) {
-            const p1 = this.points[i - 1];
-            const p2 = this.points[i];
+            const p1 = {
+                x: this.points[i - 1].x + this.transform.x,
+                y: this.points[i - 1].y + this.transform.y
+            };
+            const p2 = {
+                x: this.points[i].x + this.transform.x,
+                y: this.points[i].y + this.transform.y
+            };
             if (checkSegmentsCollision([p1, p2], line)) {
                 return true;
             }

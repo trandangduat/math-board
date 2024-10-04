@@ -19,6 +19,12 @@ export class BoundingRect {
         this.min_x = Math.min(this.min_x, Math.max(0, x - padding));
         this.min_y = Math.min(this.min_y, Math.max(0, y - padding));
     }
+    updateTranslate (dx, dy) {
+        this.min_x += dx;
+        this.max_x += dx;
+        this.min_y += dy;
+        this.max_y += dy;
+    }
     getRect() {
         return {
             x: this.min_x,

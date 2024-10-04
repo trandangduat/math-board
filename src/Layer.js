@@ -12,10 +12,13 @@ export class Layer {
     drawStroke (stroke) {
         const points = stroke.getPoints();
         const brush = stroke.getBrush();
+        const transform = stroke.getTransform();
         if (points.length < 1) {
             return;
         }
 
+        this.ctx.save();
+        this.ctx.translate(transform.x, transform.y);
         this.ctx.beginPath();
         this.ctx.moveTo(points[0].x, points[0].y);
 
@@ -45,6 +48,7 @@ export class Layer {
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
         this.ctx.stroke();
+        this.ctx.restore();
     }
     drawSelectionRect (rect) {
         const r = rect.getRect();
