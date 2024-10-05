@@ -1,5 +1,5 @@
 import { BoundingRect } from "./BoundingRect";
-import { checkSegmentsCollision } from "./Geometry";
+import { checkSegmentCircleCollision, checkSegmentsCollision } from "./Geometry";
 import { Color } from "./Color";
 
 export class Action {
@@ -66,6 +66,17 @@ export class Stroke extends Action {
         this.bdrect.updateTranslate(dx, dy);
     }
     collideWith (line) {
+        if (this.points.length === 1) {
+            const p = {
+                x: this.points[0].x + this.transform.x,
+                y: this.points[0].y + this.transform.y
+            };
+            return checkSegmentCircleCollision(line, {
+                x: p.x,
+                y: p.y,
+                radius: this.brush.radius
+            });
+        }
         for (let i = 1; i < this.points.length; i++) {
             const p1 = {
                 x: this.points[i - 1].x + this.transform.x,

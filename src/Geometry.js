@@ -26,6 +26,51 @@ export function checkSegmentsCollision (line1, line2) {
     return t >= 0 && t <= 1 && u >= 0 && u <= 1;
 }
 
+export function checkPointInsideCircle (point, circle) {
+    let x = point.x;
+    let y = point.y;
+    let r = circle.radius;
+    let dx = x - circle.x;
+    let dy = y - circle.y;
+    return dx * dx + dy * dy <= r * r;
+}
+
+export function checkSegmentCircleCollision(line, circle, includeSegmentInsideCircle = true) {
+    if (includeSegmentInsideCircle) {
+        if (checkPointInsideCircle(line[0], circle) || checkPointInsideCircle(line[1], circle)) {
+            return true;
+        }
+    }
+
+    let { x: x1, y: y1 } = line[0];
+    let { x: x2, y: y2 } = line[1];
+    let { x: cx, y: cy, radius } = circle;
+
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+
+    let fx = x1 - cx;
+    let fy = y1 - cy;
+
+    let a = dx * dx + dy * dy;
+    let b = 2 * (fx * dx + fy * dy);
+    let c = fx * fx + fy * fy - radius * radius;
+
+    let delta = b * b - 4 * a * c;
+
+    if (delta < 0) {
+        return false;
+    }
+
+    let t1 = (-b - Math.sqrt(delta)) / (2 * a);
+    let t2 = (-b + Math.sqrt(delta)) / (2 * a);
+
+    if (t1 >= 0 && t1 <= 1) return true;
+    if (t2 >= 0 && t2 <= 1) return true;
+
+    return false;
+}
+
 export function getAngleBetweenVectors (v1, v2) {
     let dot = v1.x * v2.x + v1.y * v2.y;
     let d1 = Math.sqrt(v1.x ** 2 + v1.y ** 2);

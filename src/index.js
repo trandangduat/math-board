@@ -41,7 +41,7 @@ let drawingState = BEFORE_PAINTING;
 let actionType = MODE_BRUSH;
 
 const brush = {
-    radius: 4,
+    radius: 2,
     color: new Color(0, 0, 0, 1),
 }
 
