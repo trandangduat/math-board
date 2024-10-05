@@ -451,10 +451,12 @@ async function finishDrawing (e) {
             }
 
             if (button !== selectButton) {
+                while (selectedActions.length > 0) {
+                    selectedActions.pop().setIsSelected(false);
+                    draw();
+                }
             }
         });
     });
-
-    draw();
 
 })()
