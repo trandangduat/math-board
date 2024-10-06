@@ -58,15 +58,17 @@ export class Layer {
         this.ctx.fillStyle = rect.color.setAlpha(0.2).getColor();
         this.ctx.fillRect(r.x, r.y, r.w, r.h);
     }
+    drawRect (rect, color) {
+        this.ctx.strokeStyle = color.getColor();
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    }
     drawBoundingRect (action, color = new Color(49, 130, 237)) {
         if (!action.getIsSelected()) {
             return;
         }
 
-        const rect = action.getBoundingRect().getRect();
-        this.ctx.strokeStyle = color.getColor();
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+        this.drawRect(action.getBoundingRect().getRect(), color);
     }
     rect () {
         return this.canvas.getBoundingClientRect();

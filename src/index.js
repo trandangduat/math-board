@@ -18,6 +18,7 @@ let resultRects = [];
 let prevCursor = null;
 let selectedActions = [];
 let selectRect = new SelectionRect();
+let currentGroupBoundingRect = new BoundingRect();
 
 let actions = new Stack();
 let removedActions = new Stack();
@@ -98,20 +99,23 @@ function draw() {
         }
     }
 
+
     for (let stroke of actions.getStack()) {
         if (stroke.getType() === "stroke") {
             mainLayer.drawStroke(stroke);
-            if (stroke.getIsSelected()) {
-                mainLayer.drawBoundingRect(stroke);
-            }
         }
+    }
+
+    currentGroupBoundingRect.reset();
+    if (selectedActions.length > 0) {
+        for (let action of selectedActions) {
+            currentGroupBoundingRect.join(action.getBoundingRect());
+        }
+        mainLayer.drawRect(currentGroupBoundingRect.getRect(), new Color(49, 130, 237));
     }
 
     undoButton.disabled = actions.size < 1;
     redoButton.disabled = removedActions.empty();
-
-    // Draw result next to matching main bounding box
-    renderExpressionsResults();
 }
 
 function undo(e) {
@@ -228,11 +232,8 @@ function startDrawing (e) {
 
             case MODE_SELECT: {
                 if (selectedActions.length > 0) {
-                    for (let action of selectedActions) {
-                        if (action.getBoundingRect().cover(cursor)) {
-                            actionType = MODE_TRANSLATE;
-                            break;
-                        }
+                    if (currentGroupBoundingRect.cover(cursor)) {
+                        actionType = MODE_TRANSLATE;
                     }
                 }
 
