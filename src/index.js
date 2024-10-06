@@ -360,18 +360,21 @@ async function finishDrawing (e) {
         switch (actionType) {
 
             case MODE_BRUSH: {
-                tempPath = [];
+                while (tempPath.length > 0) {
+                    actions.top().addPoint(tempPath.pop());
+                }
+                // tempPath = [];
 
-                const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
-                if (bestBox.index === -1) {
-                    mainBoundingRects.push(new BoundingRect());
-                    mainBoundingRects[mainBoundingRects.length - 1].join(boundingRects[boundingRects.length - 1]);
-                } else {
-                    mainBoundingRects[bestBox.index].join(boundingRects[boundingRects.length - 1]);
-                }
-                if (detectEqualSign()) {
-                    await capture(mainBoundingRects[bestBox.index]);
-                }
+                // const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
+                // if (bestBox.index === -1) {
+                //     mainBoundingRects.push(new BoundingRect());
+                //     mainBoundingRects[mainBoundingRects.length - 1].join(boundingRects[boundingRects.length - 1]);
+                // } else {
+                //     mainBoundingRects[bestBox.index].join(boundingRects[boundingRects.length - 1]);
+                // }
+                // if (detectEqualSign()) {
+                //     await capture(mainBoundingRects[bestBox.index]);
+                // }
                 break;
             }
 
