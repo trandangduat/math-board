@@ -106,3 +106,30 @@ export class Erase extends Action {
         this.strokeActions.push(action);
     }
 }
+
+export class Transform extends Action {
+    constructor (
+        actions = [],
+        translate = { x: 0, y: 0 }
+    ) {
+        super('transform');
+        this.translate = {...translate};
+        this.affectedActions = [...actions];
+    }
+    updateTranslate (dx, dy) {
+        this.translate.x += dx;
+        this.translate.y += dy;
+    }
+    getTranslate () {
+        return this.translate;
+    }
+    setTranslate (translate) {
+        this.translate = translate;
+    }
+    getAffectedActions () {
+        return this.affectedActions;
+    }
+    setAffectedActions (actions) {
+        this.affectedActions = actions;
+    }
+}

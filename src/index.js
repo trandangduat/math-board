@@ -2,7 +2,7 @@ import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, getNextPoints } from "./LineAlgorithms.js";
 import { BoundingRect, SelectionRect } from "./BoundingRect.js";
-import { Erase, Stroke } from "./Action.js";
+import { Erase, Stroke, Transform } from "./Action.js";
 import { Color } from "./Color.js";
 
 const uiLayer = new Layer("ui");
@@ -234,6 +234,7 @@ function startDrawing (e) {
                 if (selectedActions.length > 0) {
                     if (currentGroupBoundingRect.cover(cursor)) {
                         actionType = MODE_TRANSLATE;
+                        actions.push(new Transform([]));
                     }
                 }
 
@@ -254,6 +255,7 @@ function startDrawing (e) {
                         selectedActions.push(action);
 
                         actionType = MODE_TRANSLATE;
+                        actions.push(new Transform([]));
                         selectRect.setRender(false);
                         break;
                     }
@@ -329,6 +331,9 @@ function whileDrawing (e) {
                 for (let action of selectedActions) {
                     action.updateTranslate(dx, dy);
                 }
+                if (actions.top().getType() === "transform") {
+                    actions.top().updateTranslate(dx, dy);
+                }
                 break;
             }
         }
@@ -398,12 +403,17 @@ async function finishDrawing (e) {
             }
 
             case MODE_TRANSLATE: {
+                if (actions.top().getType() === "transform") {
+                    actions.top().setAffectedActions(selectedActions);
+                }
+
                 actionType = MODE_SELECT;
                 break;
             }
         }
         drawingState = BEFORE_PAINTING;
         draw();
+        console.log([...actions.getStack()]);
     }
 
     prevCursor = null;
