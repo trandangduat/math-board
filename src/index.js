@@ -124,17 +124,36 @@ function undo(e) {
         return;
     }
 
-    const action = actions.pop();
-    removedActions.push(action);
+    const lastAction = actions.pop();
+    removedActions.push(lastAction);
 
-    switch (action.getType()) {
+    switch (lastAction.getType()) {
         case "erase": {
-            const deletedStrokes = action.getStrokeActions();
+            const deletedStrokes = lastAction.getStrokeActions();
             for (let stroke of deletedStrokes) {
                 stroke.setIsErased(false);
             }
             actions.push(...deletedStrokes);
             actions.sort((a, b) => a.getId() - b.getId());
+            break;
+        }
+
+        case "transform": {
+            const affectedActionsId = lastAction.getAffectedActionsId();
+            const {x: dx, y: dy} = lastAction.getTranslate();
+
+            affectedActionsId.sort((a, b) => a - b);
+
+            let j = 0;
+            for (let actionId of affectedActionsId) {
+                for (; j < actions.size; j++) {
+                    if (actions.get(j).getId() === actionId) {
+                        actions.get(j).updateTranslate(-dx, -dy);
+                        break;
+                    }
+                }
+            }
+
             break;
         }
     }
@@ -148,12 +167,12 @@ function redo(e) {
         return;
     }
 
-    const action = removedActions.pop();
-    actions.push(action);
+    const lastRemovedAction = removedActions.pop();
+    actions.push(lastRemovedAction);
 
-    switch (action.getType()) {
+    switch (lastRemovedAction.getType()) {
         case "erase": {
-            const deletedStrokes = action.getStrokeActions();
+            const deletedStrokes = lastRemovedAction.getStrokeActions();
             for (let stroke of deletedStrokes) {
                 let i = -1;
                 for (let j = 0; j < actions.size; j++) {
@@ -165,6 +184,25 @@ function redo(e) {
                 if (i !== -1) {
                     actions.get(i).setIsErased(true);
                     actions.remove(i);
+                }
+            }
+
+            break;
+        }
+
+        case "transform": {
+            const affectedActionsId = lastRemovedAction.getAffectedActionsId();
+            const {x: dx, y: dy} = lastRemovedAction.getTranslate();
+
+            affectedActionsId.sort((a, b) => a - b);
+
+            let j = 0;
+            for (let actionId of affectedActionsId) {
+                for (; j < actions.size; j++) {
+                    if (actions.get(j).getId() === actionId) {
+                        actions.get(j).updateTranslate(dx, dy);
+                        break;
+                    }
                 }
             }
 
@@ -404,7 +442,12 @@ async function finishDrawing (e) {
 
             case MODE_TRANSLATE: {
                 if (actions.top().getType() === "transform") {
-                    actions.top().setAffectedActions(selectedActions);
+                    if (actions.top().getTranslate().x === 0 && actions.top().getTranslate().y === 0) {
+                        actions.pop();
+                    } else {
+                        actions.top().setAffectedActionsId(selectedActions.map(a => a.getId()));
+                        removedActions.clear();
+                    }
                 }
 
                 actionType = MODE_SELECT;

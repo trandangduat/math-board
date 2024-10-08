@@ -109,12 +109,12 @@ export class Erase extends Action {
 
 export class Transform extends Action {
     constructor (
-        actions = [],
+        actionsId = [],
         translate = { x: 0, y: 0 }
     ) {
         super('transform');
         this.translate = {...translate};
-        this.affectedActions = [...actions];
+        this.affectedActionsId = actionsId;
     }
     updateTranslate (dx, dy) {
         this.translate.x += dx;
@@ -126,10 +126,10 @@ export class Transform extends Action {
     setTranslate (translate) {
         this.translate = translate;
     }
-    getAffectedActions () {
-        return this.affectedActions;
+    getAffectedActionsId () {
+        return this.affectedActionsId;
     }
-    setAffectedActions (actions) {
-        this.affectedActions = actions;
+    setAffectedActionsId (actionsId) {
+        this.affectedActionsId = actionsId;
     }
 }
