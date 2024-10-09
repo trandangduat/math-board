@@ -463,10 +463,11 @@ async function finishDrawing (e) {
 }
 
 function handleKeyDown (e) {
+    console.log(e.key);
+
     switch (e.key) {
 
         case "Delete": {
-
             if (actionType === MODE_SELECT && selectedActions.length > 0) {
                 actions.push(new Erase(selectedActions));
                 removedActions.clear();
@@ -490,6 +491,36 @@ function handleKeyDown (e) {
 
             break;
         }
+
+        case "z": {
+            if (e.ctrlKey) {
+                undo(e);
+            }
+            break;
+        }
+
+        case "y": {
+            if (e.ctrlKey) {
+                redo(e);
+            }
+            break;
+        }
+
+        case "b": {
+            brushButton.click();
+            break;
+        }
+
+        case "e": {
+            eraserButton.click();
+            break;
+        }
+
+        case "s": {
+            selectButton.click();
+            break;
+        }
+
     }
 }
 
