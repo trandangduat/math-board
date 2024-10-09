@@ -462,6 +462,37 @@ async function finishDrawing (e) {
     prevCursor = null;
 }
 
+function handleKeyDown (e) {
+    switch (e.key) {
+
+        case "Delete": {
+
+            if (actionType === MODE_SELECT && selectedActions.length > 0) {
+                actions.push(new Erase(selectedActions));
+                removedActions.clear();
+
+                for (let action of selectedActions) {
+                    let i = -1;
+                    for (let j = 0; j < actions.size; j++) {
+                        if (actions.get(j).getId() === action.getId()) {
+                            i = j;
+                            break;
+                        }
+                    }
+                    if (i !== -1) {
+                        actions.get(i).setIsErased(true);
+                        actions.remove(i);
+                    }
+                }
+                selectedActions = [];
+                draw();
+            }
+
+            break;
+        }
+    }
+}
+
 (async function main() {
     // predictWorker.postMessage({
     //     message: "LOAD",
@@ -478,6 +509,8 @@ async function finishDrawing (e) {
     uiLayer.canvas.addEventListener("mousemove", whileDrawing);
     uiLayer.canvas.addEventListener("mouseup", finishDrawing);
     uiLayer.canvas.addEventListener("mouseout", finishDrawing);
+
+    uiLayer.canvas.addEventListener("keydown", handleKeyDown);
 
     undoButton.addEventListener("click", undo);
     redoButton.addEventListener("click", redo);

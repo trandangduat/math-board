@@ -4,6 +4,7 @@ export class Layer {
     constructor (id) {
         this.id = id;
         this.canvas = document.createElement("canvas");
+        this.canvas.tabIndex = 1;
         this.canvas.id = id;
         this.canvas.width = innerWidth;
         this.canvas.height = innerHeight;
