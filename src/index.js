@@ -2,7 +2,7 @@ import { Layer } from "./Layer.js";
 import { Stack } from "./Stack.js";
 import { addToBuffer, clearBuffer, getNextPoints } from "./LineAlgorithms.js";
 import { BoundingRect, SelectionRect } from "./BoundingRect.js";
-import { Erase, Stroke, Transform } from "./Action.js";
+import { Erase, Figure, Stroke, Transform } from "./Action.js";
 import { Color } from "./Color.js";
 
 const uiLayer = new Layer("ui");
@@ -100,9 +100,17 @@ function draw() {
     }
 
 
-    for (let stroke of actions.getStack()) {
-        if (stroke.getType() === "stroke") {
-            mainLayer.drawStroke(stroke);
+    for (let action of actions.getStack()) {
+        switch (action.getType()) {
+            case "stroke": {
+                mainLayer.drawStroke(action);
+                break;
+            }
+
+            case "figure": {
+                mainLayer.drawFigure(action);
+                break;
+            }
         }
     }
 
@@ -579,5 +587,13 @@ function handleKeyDown (e) {
             }
         });
     });
+
+
+    const img = new Image();
+    img.src = "https://mdn.github.io/shared-assets/images/examples/rhino.jpg";
+
+    actions.push(new Figure(img, 50, 50));
+
+    draw();
 
 })()

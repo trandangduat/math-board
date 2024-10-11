@@ -133,3 +133,54 @@ export class Transform extends Action {
         this.affectedActionsId = actionsId;
     }
 }
+
+export class Figure extends Action {
+    constructor (image, x, y, w = -1, h = -1) {
+        super('figure');
+        this.img = image;
+
+        this.bdrect = new BoundingRect();
+        if (w === -1 || h === -1) {
+            w = image.width;
+            h = image.height;
+        }
+        this.bdrect.update(x, y);
+        this.bdrect.update(x + w - 1, y + h - 1);
+
+        this.isErased = false;
+        this.isSelected = false;
+        this.transform = {
+            x: 0,
+            y: 0,
+        };
+    }
+    getImg() {
+        return this.img;
+    }
+    setImg(image) {
+        this.img = image;
+    }
+    getBoundingRect() {
+        return this.bdrect;
+    }
+    getIsErased () {
+        return this.isErased;
+    }
+    setIsErased (value) {
+        this.isErased = value;
+    }
+    getIsSelected () {
+        return this.isSelected;
+    }
+    setIsSelected (value) {
+        this.isSelected = value;
+    }
+    getTransform() {
+        return this.transform;
+    }
+    updateTranslate (dx, dy) {
+        this.transform.x += dx;
+        this.transform.y += dy;
+        this.bdrect.updateTranslate(dx, dy);
+    }
+}

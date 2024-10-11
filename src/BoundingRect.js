@@ -13,7 +13,7 @@ export class BoundingRect {
         this.min_x = this.min_y = BoundingRect.MAX_SIZE;
         this.max_x = this.max_y = 0;
     }
-    update(x, y, padding) {
+    update(x, y, padding = 0) {
         this.max_x = Math.max(this.max_x, x + padding);
         this.max_y = Math.max(this.max_y, y + padding);
         this.min_x = Math.min(this.min_x, Math.max(0, x - padding));
