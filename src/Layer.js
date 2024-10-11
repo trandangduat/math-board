@@ -52,12 +52,8 @@ export class Layer {
         this.ctx.restore();
     }
     drawFigure (figure) {
-        const transform = figure.getTransform();
-        this.ctx.save();
-        this.ctx.translate(transform.x, transform.y);
         const {x, y, w, h} = figure.getBoundingRect().getRect();
         this.ctx.drawImage(figure.getImg(), x, y);
-        this.ctx.restore();
     }
     drawSelectionRect (rect) {
         const r = rect.getRect();

@@ -295,15 +295,25 @@ function startDrawing (e) {
                     selectedActions.pop().setIsSelected(false);
                 }
 
-                for (let action of actions.getStack()) {
-                    if (action.getType() === "stroke" && action.getBoundingRect().cover(cursor)) {
-                        action.setIsSelected(true);
-                        selectedActions.push(action);
-
-                        actionType = MODE_TRANSLATE;
-                        actions.push(new Transform([]));
-                        selectRect.setRender(false);
+                for (let i = actions.size - 1; i >= 0; i--) {
+                    if (actionType !== MODE_SELECT) {
                         break;
+                    }
+                    const action = actions.get(i);
+                    switch (action.getType()) {
+                        case "stroke":
+                        case "figure": {
+                            if (action.getBoundingRect().cover(cursor)) {
+                                action.setIsSelected(true);
+                                selectedActions.push(action);
+
+                                actionType = MODE_TRANSLATE;
+                                actions.push(new Transform([]));
+                                selectRect.setRender(false);
+                            }
+                            break;
+                        }
+
                     }
                 }
                 break;
@@ -353,18 +363,20 @@ function whileDrawing (e) {
 
                     selectedActions = [];
                     for (let action of actions.getStack()) {
-
-                        if (action.getType() === "stroke") {
-
-                            if (selectRect.intersect(action.getBoundingRect())) {
-                                selectedActions.push(action);
-                                if (!action.getIsSelected()) {
-                                    action.setIsSelected(true);
+                        switch (action.getType()) {
+                            case "stroke":
+                            case "figure": {
+                                if (selectRect.intersect(action.getBoundingRect())) {
+                                    selectedActions.push(action);
+                                    if (!action.getIsSelected()) {
+                                        action.setIsSelected(true);
+                                    }
+                                } else if (action.getIsSelected()) {
+                                    action.setIsSelected(false);
                                 }
-                            } else if (action.getIsSelected()) {
-                                action.setIsSelected(false);
-                            }
 
+                                break;
+                            }
                         }
                     }
                 }

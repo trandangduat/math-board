@@ -179,8 +179,6 @@ export class Figure extends Action {
         return this.transform;
     }
     updateTranslate (dx, dy) {
-        this.transform.x += dx;
-        this.transform.y += dy;
         this.bdrect.updateTranslate(dx, dy);
     }
 }
