@@ -95,15 +95,15 @@ export class Stroke extends Action {
 }
 
 export class Erase extends Action {
-    constructor (strokeActions) {
+    constructor (erasedActions) {
         super('erase');
-        this.strokeActions = [...strokeActions];
+        this.erasedActions = [...erasedActions];
     }
-    getStrokeActions () {
-        return this.strokeActions;
+    getErasedActions () {
+        return this.erasedActions;
     }
-    addStroke (action) {
-        this.strokeActions.push(action);
+    addAction (action) {
+        this.erasedActions.push(action);
     }
 }
 

@@ -40,9 +40,7 @@ export class Layer {
         }
 
         if (stroke.getIsErased()) {
-            brush.color.setAlpha(0.4);
-        } else {
-            brush.color.setAlpha(1);
+            this.ctx.globalAlpha = 0.4;
         }
         this.ctx.strokeStyle = brush.color.getColor();
         this.ctx.lineWidth = brush.radius * 2;
@@ -53,7 +51,15 @@ export class Layer {
     }
     drawFigure (figure) {
         const {x, y, w, h} = figure.getBoundingRect().getRect();
-        this.ctx.drawImage(figure.getImg(), x, y);
+        if (figure.getIsErased()) {
+            this.ctx.save();
+            this.ctx.globalAlpha = 0.4;
+            this.ctx.drawImage(figure.getImg(), x, y);
+            this.ctx.restore();
+
+        } else {
+            this.ctx.drawImage(figure.getImg(), x, y);
+        }
     }
     drawSelectionRect (rect) {
         const r = rect.getRect();

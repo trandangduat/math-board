@@ -137,11 +137,11 @@ function undo(e) {
 
     switch (lastAction.getType()) {
         case "erase": {
-            const deletedStrokes = lastAction.getStrokeActions();
-            for (let stroke of deletedStrokes) {
-                stroke.setIsErased(false);
+            const erasedActions = lastAction.getErasedActions();
+            for (let action of erasedActions) {
+                action.setIsErased(false);
             }
-            actions.push(...deletedStrokes);
+            actions.push(...erasedActions);
             actions.sort((a, b) => a.getId() - b.getId());
             break;
         }
@@ -180,11 +180,11 @@ function redo(e) {
 
     switch (lastRemovedAction.getType()) {
         case "erase": {
-            const deletedStrokes = lastRemovedAction.getStrokeActions();
-            for (let stroke of deletedStrokes) {
+            const erasedActions = lastRemovedAction.getErasedActions();
+            for (let action of erasedActions) {
                 let i = -1;
                 for (let j = 0; j < actions.size; j++) {
-                    if (actions.get(j).getId() === stroke.getId()) {
+                    if (actions.get(j).getId() === action.getId()) {
                         i = j;
                         break;
                     }
@@ -346,12 +346,26 @@ function whileDrawing (e) {
             }
 
             case MODE_ERASE: {
-                for (let action of actions.getStack()) {
-                    if (action.getType() === "stroke") {
-                        if (!action.getIsErased() && action.collideWith([prevCursor, cursor])) {
-                            actions.top().addStroke(action);
-                            action.setIsErased(true);
+                for (let i = actions.size - 1; i >= 0; i--) {
+                    const action = actions.get(i);
+
+                    switch (action.getType()) {
+                        case "stroke": {
+                            if (!action.getIsErased() && action.collideWith([prevCursor, cursor])) {
+                                actions.top().addAction(action);
+                                action.setIsErased(true);
+                            }
+                            break;
                         }
+
+                        case "figure": {
+                            if (!action.getIsErased() && action.getBoundingRect().cover(cursor)) {
+                                actions.top().addAction(action);
+                                action.setIsErased(true);
+                            }
+                            break;
+                        }
+
                     }
                 }
                 break;
@@ -445,8 +459,14 @@ async function finishDrawing (e) {
             case MODE_ERASE: {
                 for (let i = actions.size - 1; i >= 0; i--) {
                     let action = actions.get(i);
-                    if (action.getType() === "stroke" && action.getIsErased()) {
-                        actions.remove(i);
+                    switch (action.getType()) {
+                        case "stroke":
+                        case "figure": {
+                            if (action.getIsErased()) {
+                                actions.remove(i);
+                            }
+                            break;
+                        }
                     }
                 }
                 break;
