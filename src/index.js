@@ -223,31 +223,40 @@ async function solveMathExpressions (expressionGroup, groupIndex) {
     });
 
     predictWorker.onmessage = async(e) => {
-        const tempLayer = new Layer("temporary");
-        const resultRect = tempLayer.drawText(
-            e.data[0].evalResult,
-            0,
-            0,
-            getFontWeightFromStrokeRadius(brush.radius),
-            rect.h * 0.9,
-            "Playpen Sans, cursive",
-            new Color(200, 0, 0)
-        );
-        console.log(e.data[0]);
-
-        const image = await createImageBitmap(tempLayer.getSnapshot(resultRect, true));
-        actions.push(new Figure(
-            image,
-            bdRect.max_x + 10,
-            (bdRect.max_y + bdRect.min_y - resultRect.h) / 2,
-            resultRect.w,
-            resultRect.h
-        ));
-
-        draw();
-
+        addEvalResultToScreen(e.data, groupIndex);
         predictWorker.onmessage = null;
     };
+}
+
+async function addEvalResultToScreen (result, groupIndex) {
+    const bdRect = new BoundingRect();
+    for (let action of expressionGroups[groupIndex]) {
+        bdRect.join(action.getBoundingRect());
+    }
+    const rect = bdRect.getRect();
+
+    const tempLayer = new Layer("temporary");
+    const resultRect = tempLayer.drawText(
+        result[0].evalResult,
+        0,
+        0,
+        getFontWeightFromStrokeRadius(brush.radius),
+        rect.h * 0.9,
+        "Playpen Sans, cursive",
+        new Color(200, 0, 0)
+    );
+    console.log(result);
+    const image = await createImageBitmap(tempLayer.getSnapshot(resultRect, true));
+
+    actions.push(new Figure(
+        image,
+        bdRect.max_x + 10,
+        (bdRect.max_y + bdRect.min_y - resultRect.h) / 2,
+        resultRect.w,
+        resultRect.h
+    ));
+
+    draw();
 }
 
 function getMousePos (e) {
@@ -480,7 +489,7 @@ async function finishDrawing (e) {
                     If there is an equal sign detected, solve its group math expressions
                 */
                 if (detectEqualSign()) {
-                   await solveMathExpressions(expressionGroups[bestBox.index]);
+                   await solveMathExpressions(expressionGroups[bestBox.index], bestBox.index);
                 }
 
                 break;
