@@ -4,6 +4,7 @@ import { addToBuffer, clearBuffer, getNextPoints } from "./LineAlgorithms.js";
 import { BoundingRect, SelectionRect } from "./BoundingRect.js";
 import { Erase, Figure, Stroke, Transform } from "./Action.js";
 import { Color } from "./Color.js";
+import { getFontWeightFromStrokeRadius } from "./Utils.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
@@ -227,8 +228,9 @@ async function solveMathExpressions (expressionGroup, groupIndex) {
             e.data[0].evalResult,
             0,
             0,
+            getFontWeightFromStrokeRadius(brush.radius),
             rect.h * 0.9,
-            "Shantell Sans, cursive",
+            "Playpen Sans, cursive",
             new Color(200, 0, 0)
         );
         console.log(e.data[0]);
@@ -469,11 +471,9 @@ async function finishDrawing (e) {
                     Find the main bounding rect which latest action bounding rect belongs to
                 */
                 if (bestBox.index === -1) {
-                    // mainBoundingRects.push(new BoundingRect());
                     expressionGroups.push([]);
                     bestBox.index = expressionGroups.length - 1;
                 }
-                // mainBoundingRects[bestBox.index].join(lastActionBdRect);
                 expressionGroups[bestBox.index].push(actions.top());
 
                 /*

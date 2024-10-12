@@ -94,8 +94,8 @@ export class Layer {
     joint (otherLayer) {
         this.ctx.drawImage(otherLayer.canvas, 0, 0);
     }
-    drawText (text, x, y, fontSize, fontFamily, color) {
-        this.ctx.font = `50 ${fontSize}px ${fontFamily}`;
+    drawText (text, x, y, fontWeight, fontSize, fontFamily, color) {
+        this.ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
         this.ctx.fillStyle = color.getColor();
         this.ctx.textBaseline = "top";
         this.ctx.fillText(text, x, y + 2);
