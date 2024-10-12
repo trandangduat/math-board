@@ -7,14 +7,12 @@ import { Color } from "./Color.js";
 
 const uiLayer = new Layer("ui");
 const mainLayer = new Layer("main");
-const resultLayer = new Layer("result");
 const predictWorker = new Worker(
     new URL("./model/worker.js", import.meta.url), {
     type: 'module'
 });
-let mainBoundingRects = [];
-let boundingRects = [];
-let resultRects = [];
+
+let expressionGroups = [];
 let prevCursor = null;
 let selectedActions = [];
 let selectRect = new SelectionRect();
@@ -51,28 +49,6 @@ function clear() {
 
     if (actionType === MODE_SELECT) {
         uiLayer.clear();
-    }
-}
-
-function renderExpressionsResults() {
-    for (let res of resultRects) {
-        if (res.isRendered) {
-            continue;
-        }
-        const rect = mainBoundingRects.find((r) => r.id === res.bdrectId).getRect();
-        const fontSize = rect.h * 0.9;
-        const fontWeight = Math.min(900, Math.max(400, Math.round(brush.radius / 100 * 100)));
-        resultLayer.drawText(
-            res.value,
-            rect.x + rect.w + 10,
-            rect.y + rect.h / 2 + fontSize / 7,
-            `${fontWeight} ${fontSize}px Shantell Sans, cursive`,
-            "#FBAE56"
-        );
-        // draw text animation
-        mainLayer.joint(resultLayer);
-        resultLayer.clear();
-        res.isRendered = true;
     }
 }
 
@@ -120,6 +96,14 @@ function draw() {
             currentGroupBoundingRect.join(action.getBoundingRect());
         }
         mainLayer.drawRect(currentGroupBoundingRect.getRect(), new Color(49, 130, 237));
+    }
+
+    for (let i = 0; i < expressionGroups.length; i++) {
+        const bdRect = new BoundingRect();
+        for (let action of expressionGroups[i]) {
+            bdRect.join(action.getBoundingRect());
+        }
+        mainLayer.drawRect(bdRect.getRect(), new Color(130, 30, 237));
     }
 
     undoButton.disabled = actions.size < 1;
@@ -220,27 +204,47 @@ function redo(e) {
     draw();
 }
 
-async function capture (bdRect) {
+async function solveMathExpressions (expressionGroup, groupIndex) {
+    const tempLayer = new Layer("temporary");
+    const bdRect = new BoundingRect();
+
+    for (let action of expressionGroup) {
+        tempLayer.drawStroke(action);
+        bdRect.join(action.getBoundingRect());
+    }
+
     const rect = bdRect.getRect();
-    const id = bdRect.id;
-    const imgData = mainLayer.getSnapshot(rect);
+    const imgData = tempLayer.getSnapshot(rect);
+
     predictWorker.postMessage({
         message: "PREDICT",
         imgData: imgData
     });
-    predictWorker.onmessage = (e) => {
-        // console.log(e.data);
-        resultRects = resultRects.filter(r => r.bdrectId !== id);
-        resultRects.push({
-            bdrectId: id,
-            value: e.data[0].evalResult,
-            isRendered: false
-        });
+
+    predictWorker.onmessage = async(e) => {
+        const tempLayer = new Layer("temporary");
+        const resultRect = tempLayer.drawText(
+            e.data[0].evalResult,
+            0,
+            0,
+            rect.h * 0.9,
+            "Shantell Sans, cursive",
+            new Color(200, 0, 0)
+        );
+        console.log(e.data[0]);
+
+        const image = await createImageBitmap(tempLayer.getSnapshot(resultRect, true));
+        actions.push(new Figure(
+            image,
+            bdRect.max_x + 10,
+            (bdRect.max_y + bdRect.min_y - resultRect.h) / 2,
+            resultRect.w,
+            resultRect.h
+        ));
+
+        draw();
+
         predictWorker.onmessage = null;
-    };
-    predictWorker.onerror = (e) => {
-        console.error("Worker error: ", e.message);
-        predictWorker.onerror = null;
     };
 }
 
@@ -260,7 +264,6 @@ function startDrawing (e) {
                 tempPath = [];
                 clearBuffer();
 
-                boundingRects.push(new BoundingRect());
                 addToBuffer(cursor);
 
                 actions.push(new Stroke([cursor], brush));
@@ -416,19 +419,24 @@ function whileDrawing (e) {
 }
 
 function detectEqualSign() {
-    if (boundingRects.length < 2) {
+    let curRect = actions.top().getBoundingRect().getRect();
+    let preRect = null;
+
+    for (let i = actions.size - 2; i >= 0; i--) {
+        let action = actions.get(i);
+        if (action.getType() === "stroke") {
+            preRect = action.getBoundingRect().getRect();
+            break;
+        }
+    }
+
+    if (preRect === null) {
         return false;
     }
-    let curRect = boundingRects[boundingRects.length - 1].getRect();
-    let preRect = boundingRects[boundingRects.length - 2].getRect();
-    if (curRect.x < preRect.x) {
-        [curRect, preRect] = [preRect, curRect];
-    }
-    const xIntersect = (preRect.x + preRect.w) - curRect.x;
-    if (curRect.y < preRect.y) {
-        [curRect, preRect] = [preRect, curRect];
-    }
-    const yIntersect = (preRect.y + preRect.h) - curRect.y;
+
+    const xIntersect = Math.min(preRect.x + preRect.w, curRect.x + curRect.w) - Math.max(preRect.x, curRect.x);
+    const yIntersect = Math.min(preRect.y + preRect.h, curRect.y + curRect.h) - Math.max(preRect.y, curRect.y);
+
     return (xIntersect * 2 >= Math.min(curRect.w, preRect.w) && yIntersect < 5);
 }
 
@@ -441,18 +449,40 @@ async function finishDrawing (e) {
                 while (tempPath.length > 0) {
                     actions.top().addPoint(tempPath.pop());
                 }
-                // tempPath = [];
 
-                // const bestBox = boundingRects[boundingRects.length - 1].findBestNearbyBoundingBox(mainBoundingRects);
-                // if (bestBox.index === -1) {
-                //     mainBoundingRects.push(new BoundingRect());
-                //     mainBoundingRects[mainBoundingRects.length - 1].join(boundingRects[boundingRects.length - 1]);
-                // } else {
-                //     mainBoundingRects[bestBox.index].join(boundingRects[boundingRects.length - 1]);
-                // }
-                // if (detectEqualSign()) {
-                //     await capture(mainBoundingRects[bestBox.index]);
-                // }
+                const mainBoundingRects = [];
+
+                for (let i = 0; i < expressionGroups.length; i++) {
+                    expressionGroups[i] = expressionGroups[i].filter(a => !a.getIsErased());
+
+                    const bdRect = new BoundingRect();
+                    for (let action of expressionGroups[i]) {
+                        bdRect.join(action.getBoundingRect());
+                    }
+                    mainBoundingRects.push(bdRect);
+                }
+
+                const lastActionBdRect = actions.top().getBoundingRect();
+                const bestBox = lastActionBdRect.findBestNearbyBoundingBox(mainBoundingRects);
+
+                /*
+                    Find the main bounding rect which latest action bounding rect belongs to
+                */
+                if (bestBox.index === -1) {
+                    // mainBoundingRects.push(new BoundingRect());
+                    expressionGroups.push([]);
+                    bestBox.index = expressionGroups.length - 1;
+                }
+                // mainBoundingRects[bestBox.index].join(lastActionBdRect);
+                expressionGroups[bestBox.index].push(actions.top());
+
+                /*
+                    If there is an equal sign detected, solve its group math expressions
+                */
+                if (detectEqualSign()) {
+                   await solveMathExpressions(expressionGroups[bestBox.index]);
+                }
+
                 break;
             }
 
@@ -565,9 +595,9 @@ function handleKeyDown (e) {
 }
 
 (async function main() {
-    // predictWorker.postMessage({
-    //     message: "LOAD",
-    // });
+    predictWorker.postMessage({
+        message: "LOAD",
+    });
     predictWorker.onmessage = (e) => {
         console.log(e.data);
         predictWorker.onmessage = null;
@@ -619,13 +649,5 @@ function handleKeyDown (e) {
             }
         });
     });
-
-
-    const img = new Image();
-    img.src = "https://mdn.github.io/shared-assets/images/examples/rhino.jpg";
-
-    actions.push(new Figure(img, 50, 50));
-
-    draw();
 
 })()

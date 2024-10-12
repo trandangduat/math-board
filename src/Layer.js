@@ -94,18 +94,28 @@ export class Layer {
     joint (otherLayer) {
         this.ctx.drawImage(otherLayer.canvas, 0, 0);
     }
-    drawText (text, x, y, font, color) {
-        this.ctx.font = font;
-        this.ctx.fillStyle = color;
-        this.ctx.textBaseline = "middle";
-        this.ctx.fillText(text, x, y);
+    drawText (text, x, y, fontSize, fontFamily, color) {
+        this.ctx.font = `50 ${fontSize}px ${fontFamily}`;
+        this.ctx.fillStyle = color.getColor();
+        this.ctx.textBaseline = "top";
+        this.ctx.fillText(text, x, y + 2);
+        return {
+            x: x,
+            y: y,
+            w: this.ctx.measureText(text).width,
+            h: this.ctx.measureText(text).actualBoundingBoxDescent + 4
+        };
     }
-    getSnapshot (rect) {
+    getSnapshot (rect, transparent = false) {
         const [x, y, width, height] = [rect.x, rect.y, rect.w, rect.h];
         const offscreenCanvas = new OffscreenCanvas(width, height);
         const offscreenCtx = offscreenCanvas.getContext("2d");
-        offscreenCtx.fillStyle = "white";
-        offscreenCtx.fillRect(0, 0, width, height);
+        if (transparent) {
+            offscreenCtx.clearRect(0, 0, width, height);
+        } else {
+            offscreenCtx.fillStyle = "white";
+            offscreenCtx.fillRect(0, 0, width, height);
+        }
         offscreenCtx.drawImage(this.canvas, x, y, width, height, 0, 0, width, height);
         return offscreenCtx.getImageData(0, 0, width, height);
     }
